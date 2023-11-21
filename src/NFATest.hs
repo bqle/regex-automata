@@ -16,7 +16,7 @@ tAlphabetNFA =
   ]
 
 kleeneNFA :: NFA
-kleeneNFA = kleene alphabetNFA
+kleeneNFA = kleene alphabetNFA{uuid=1}
 
 tKleeneNFA = 
   "kleeneNFA" ~: TestList [
@@ -48,5 +48,7 @@ tAlternateNFA =
     accept alternateNFA "" ~?= False
   ]
 
+test_all :: IO Counts
+test_all = runTestTT $ TestList [tAlternateNFA, tAlphabetNFA, tAppendNFA, tKleeneNFA]
 
 
