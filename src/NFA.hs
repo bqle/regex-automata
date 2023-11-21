@@ -35,7 +35,7 @@ exampleNFA :: NFA
 exampleNFA = NFA {
   uuid = "0",
   initial = ["0"], 
-  transition = Data.Map.fromList [(("0", 'a'), ["1", "2", "3"])],
+  transition = Data.Map.fromList [(("0", 'a'), ["0"])],
   accepting = ["0"]
 }
 
@@ -51,16 +51,6 @@ run NFA {initial, transition, accepting} =
 -- >>> run exampleNFA "a"
 -- ["1","2","3"]
 
-type DFA = NFA 
-
-exampleDFA :: DFA
-exampleDFA = NFA {
-  uuid = "0",
-  initial = ["0"], 
-  transition = Data.Map.fromList [(("0", 'a'), ["0"])],
-  accepting = ["0"]
-}
-
 -- | Show instance
 instance Show NFA where
   show NFA{uuid, initial, transition, accepting} 
@@ -69,16 +59,13 @@ instance Show NFA where
       "   transitions: " ++ show transition ++ " ,\n" ++
       "   accepting:" ++ show accepting ++ "\n }"
 
--- >>> run exampleDFA "a"
--- ["0"]
-
 accept :: NFA -> [Char] -> Bool
 accept nfa@NFA {initial, transition, accepting} s = 
   any (`elem` accepting) $ run nfa s 
 
--- >>> accept exampleDFA "a"
+-- >>> accept exampleNFA "a"
 -- True
--- >>> accept exampleDFA "ab"
+-- >>> accept exampleNFA "ab"
 -- False
 
 -- | Attach the uuid to every state, update transitions accordingly
@@ -94,7 +81,7 @@ attachUUID NFA {uuid, initial, transition, accepting} =
 -- >>> attachUUID exampleNFA
 -- {  uuid: 0 ,
 --    initial["00"] ,
---    transitions: fromList [(("00",'a'),["1","2","3"])] ,
+--    transitions: fromList [(("00",'a'),["0"])] ,
 --    accepting:["00"]
 --  }
 
@@ -102,6 +89,19 @@ attachUUID NFA {uuid, initial, transition, accepting} =
 unionTransitions :: Transition -> Transition -> Transition
 unionTransitions t1 t2 = 
   foldrWithKey Data.Map.insert t2 t1
+
+-- | Create fully bipartite graph from two lists of vertices
+--   We need original transitions because accepting states may already have 
+--   e-transitions
+bipartiteTransitions :: Transition -> [String] -> [String] -> Transition
+bipartiteTransitions transOrig s1 s2 = 
+  foldl (\acc acceptS -> 
+    foldl (\acc initS -> 
+      Data.Map.insert (acceptS, emptyTransition) (
+        fromMaybe [] (Data.Map.lookup (acceptS, emptyTransition) transOrig)
+        ++ [initS]) acc 
+    ) acc s2 
+  ) Data.Map.empty s1
 
 -- | TODO: test attach UUID should not change semantics of an NFA
 
@@ -114,27 +114,38 @@ appendNFA aut1 aut2 =
     NFA uuid1 init1 trans1 accept1 = attachUUID aut1
     NFA uuid2 init2 trans2 accept2 = attachUUID aut2
     newUUID = uuid1 ++ uuid2 -- TODO : How to get random UUID?
-    newConnections = -- add e-transitions
-      foldl (\acc acceptS -> 
-        foldl (\acc initS -> 
-          Data.Map.insert (acceptS, emptyTransition) (
-            fromMaybe [] (Data.Map.lookup (acceptS, emptyTransition) trans1)
-            ++ [initS]) acc 
-        ) acc init2 
-      ) Data.Map.empty accept1
+    newConnections = bipartiteTransitions trans1 accept1 init2
     newTransitions = unionTransitions newConnections (unionTransitions trans1 trans2)
 
--- >>> appendNFA exampleDFA exampleDFA{uuid="2"}
+-- >>> appendNFA exampleNFA exampleNFA{uuid="2"}
 -- {  uuid: 02 ,
 --    initial["00"] ,
 --    transitions: fromList [(("00",'\NUL'),["02"]),(("00",'a'),["0"]),(("02",'a'),["0"])] ,
 --    accepting:["02"]
 --  }
 
--- | alternate 2 NFA (a + b)
+-- | alternate 2 NFA (a + b) (basically OR)
+alternateNFA :: NFA -> NFA -> NFA
+alternateNFA = undefined
 
 -- | kleene-star (a*)
+kleeneNFA :: NFA -> NFA
+kleeneNFA nfa@(NFA uuid init trans accept) = 
+  NFA uuid newInit (unionTransitions newTransitions trans) newAccept
+  where 
+    newInit = ["I want unique start"] -- TODO: Unique start
+    newAccept = ["I want unique end"] -- TODO: unique end
+    newTransitions = 
+      unionTransitions 
+        (bipartiteTransitions Data.Map.empty newInit (newAccept ++ init))
+        (bipartiteTransitions trans accept (newAccept ++ init))
 
+-- >>> kleeneNFA exampleNFA
+-- {  uuid: 0 ,
+--    initial["I want unique start"] ,
+--    transitions: fromList [(("0",'\NUL'),["0"]),(("0",'a'),["0"]),(("I want unique start",'\NUL'),["0"])] ,
+--    accepting:["I want unique end"]
+--  }
 
 
 -- 
