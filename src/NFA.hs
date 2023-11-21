@@ -10,11 +10,13 @@ import qualified Test.QuickCheck as QC
 import Data.Foldable          (foldlM)
 import Control.Monad.Identity (Identity(..))
 import Data.Maybe (fromMaybe)
-import Data.Map (Map, fromList, lookup, empty, foldrWithKey, insert)
+import Data.Map (Map, fromList, lookup, empty, foldrWithKey, insert, union)
+import RandomString (randomUUID)
 
 -- | (current state, new char) -> new states
 type Transition = Map (String, Char) [String]
 
+-- | Represents the epsilon transitions in NFAs
 emptyTransition = '\0'
 
 makeTransition :: Transition -> Char -> String -> [String]
@@ -107,44 +109,70 @@ bipartiteTransitions transOrig s1 s2 =
 
 -- { CORE NFA Operations }
 -- | append 2 NFA (ab)
-appendNFA :: NFA -> NFA -> NFA
-appendNFA aut1 aut2 = 
-  NFA newUUID init1 newTransitions accept2
+appendNFA :: NFA -> NFA -> IO NFA
+appendNFA nfa1 nfa2 = do
+  newUUID <- randomUUID
+  return $ NFA newUUID init1 newTransitions accept2
   where 
-    NFA uuid1 init1 trans1 accept1 = attachUUID aut1
-    NFA uuid2 init2 trans2 accept2 = attachUUID aut2
-    newUUID = uuid1 ++ uuid2 -- TODO : How to get random UUID?
+    NFA uuid1 init1 trans1 accept1 = attachUUID nfa1 
+    NFA uuid2 init2 trans2 accept2 = attachUUID nfa2
     newConnections = bipartiteTransitions trans1 accept1 init2
     newTransitions = unionTransitions newConnections (unionTransitions trans1 trans2)
 
 -- >>> appendNFA exampleNFA exampleNFA{uuid="2"}
--- {  uuid: 02 ,
+-- {  uuid: ztcck ,
 --    initial["00"] ,
 --    transitions: fromList [(("00",'\NUL'),["02"]),(("00",'a'),["0"]),(("02",'a'),["0"])] ,
 --    accepting:["02"]
 --  }
 
 -- | alternate 2 NFA (a + b) (basically OR)
-alternateNFA :: NFA -> NFA -> NFA
-alternateNFA = undefined
+alternateNFA :: NFA -> NFA -> IO NFA
+alternateNFA nfa1 nfa2 = do 
+    newUUID <- randomUUID
+    newInitSt <- randomUUID
+    newAccSt <- randomUUID
+    let 
+      newInit = [newInitSt] 
+      newAccept = [newAccSt] 
+      newConnections = unionTransitions
+        (bipartiteTransitions Data.Map.empty newInit (init1 ++ init2))
+        (bipartiteTransitions 
+          (Data.Map.union trans1 trans2) (accept1 ++ accept2) newAccept)
+      newTransitions = unionTransitions newConnections 
+        (unionTransitions trans1 trans2) in
+
+      return $ NFA newUUID newInit newTransitions newAccept
+    where 
+      NFA uuid1 init1 trans1 accept1 = attachUUID nfa1 
+      NFA uuid2 init2 trans2 accept2 = attachUUID nfa2 
+  
+-- >>> alternateNFA exampleNFA exampleNFA
+-- {  uuid: gmf ,
+--    initial["opo"] ,
+--    transitions: fromList [(("00",'\NUL'),["ewg"]),(("00",'a'),["0"]),(("opo",'\NUL'),["00"])] ,
+--    accepting:["ewg"]
+--  }
 
 -- | kleene-star (a*)
-kleeneNFA :: NFA -> NFA
-kleeneNFA nfa@(NFA uuid init trans accept) = 
-  NFA uuid newInit (unionTransitions newTransitions trans) newAccept
-  where 
-    newInit = ["I want unique start"] -- TODO: Unique start
-    newAccept = ["I want unique end"] -- TODO: unique end
+kleeneNFA :: NFA -> IO NFA
+kleeneNFA nfa@(NFA uuid init trans accept) = do
+  newInitSt <- randomUUID
+  newAccSt <- randomUUID
+  let 
+    newInit = [newInitSt]
+    newAccept = [newAccSt]
     newTransitions = 
       unionTransitions 
         (bipartiteTransitions Data.Map.empty newInit (newAccept ++ init))
         (bipartiteTransitions trans accept (newAccept ++ init))
+  return $ NFA uuid newInit (unionTransitions newTransitions trans) newAccept
 
 -- >>> kleeneNFA exampleNFA
 -- {  uuid: 0 ,
---    initial["I want unique start"] ,
---    transitions: fromList [(("0",'\NUL'),["0"]),(("0",'a'),["0"]),(("I want unique start",'\NUL'),["0"])] ,
---    accepting:["I want unique end"]
+--    initial["ina"] ,
+--    transitions: fromList [(("0",'\NUL'),["0"]),(("0",'a'),["0"]),(("ina",'\NUL'),["0"])] ,
+--    accepting:["foa"]
 --  }
 
 
