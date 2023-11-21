@@ -20,7 +20,6 @@ epsilon = '\0'
 
 makeTransition :: Transition -> Char -> String -> [String]
 makeTransition t a s  = nub $ fromMaybe [] (Data.Map.lookup (s, a) t)
-  ++ fromMaybe [] (Data.Map.lookup (s, epsilon) t)
 
 -- | Finite NFA with state `s`, alphabet `a` and a monadic context `m`.
 --   The type parameters `s` and `a` are assumed to represent finite set
@@ -40,17 +39,27 @@ exampleNFA = NFA {
   accepting = "0"
 }
 
+-- | Find all transitions after taking the
+findNextStates :: Transition -> [String] -> Char -> [String]
 findNextStates transition states a = 
-      nub $ concatMap (makeTransition transition a) states
+      nub $ exploreEpsilons transition 
+        (nub $ concatMap (makeTransition transition a) states)
+
+-- | Expand the states to include all reachable states thru epsilon transitions
+exploreEpsilons :: Transition -> [String] -> [String]
+exploreEpsilons transition states = 
+  let
+    immediateFrontier = nub $ concatMap (makeTransition transition epsilon) states
+  in 
+    case immediateFrontier of
+      [] -> states
+      _ -> exploreEpsilons transition immediateFrontier ++ states
 
 -- Run an NFA & get the final states
 run ::  NFA -> [Char] -> [String]
 run NFA {uuid, initial, transition, accepting} = 
   foldl (findNextStates transition) 
     (nub (initial : makeTransition transition epsilon initial))
-  where 
-    findNextStates transition states a = 
-      nub $ concatMap (makeTransition transition a) states
 
 
 -- >>> run exampleNFA "a"
@@ -138,7 +147,8 @@ append nfa1 nfa2 =
     NFA uuid1 init1 trans1 accept1 = attachUUID nfa1 
     NFA uuid2 init2 trans2 accept2 = attachUUID nfa2
     newConnections = bipartiteTransitions trans1 [accept1] [init2]
-    newTransitions = unionTransitions newConnections (unionTransitions trans1 trans2)
+    newTransitions = 
+      unionTransitions newConnections (unionTransitions trans1 trans2)
 
 -- >>> appendNFA exampleNFA exampleNFA{uuid="2"}
 -- {  uuid: ztcck ,
