@@ -28,23 +28,23 @@ makeTransition t a s  = fromMaybe [] (Data.Map.lookup (s, a) t)
 --  Assumptions: 1 initial state, 1 accepting state
 data NFA = NFA
   { uuid :: String                   -- ^ uuid for the DFA
-  , initial    :: [String]              -- ^ Initial State
+  , initial    :: String              -- ^ Initial State
   , transition :: Transition      -- ^ Change state with a context.
-  , accepting  :: [String]             -- ^ Accepting subset as a predicate.
+  , accepting  :: String             -- ^ Accepting subset as a predicate.
   }
 
 exampleNFA :: NFA 
 exampleNFA = NFA {
   uuid = "0",
-  initial = ["0"], 
+  initial = "0", 
   transition = Data.Map.fromList [(("0", 'a'), ["0"])],
-  accepting = ["0"]
+  accepting = "0"
 }
 
 -- Run an NFA & get the final states
 run ::  NFA -> [Char] -> [String]
 run NFA {initial, transition, accepting} = 
-  foldl (findNextState transition) initial 
+  foldl (findNextState transition) [initial]
   where 
     findNextState transition states a = 
       concatMap (makeTransition transition a) states
@@ -63,7 +63,7 @@ instance Show NFA where
 
 accept :: NFA -> [Char] -> Bool
 accept nfa@NFA {initial, transition, accepting} s = 
-  any (`elem` accepting) $ run nfa s 
+  (accepting `elem`) $ run nfa s 
 
 -- >>> accept exampleNFA "a"
 -- True
@@ -75,8 +75,8 @@ attachUUID :: NFA -> NFA
 attachUUID NFA {uuid, initial, transition, accepting} =
   NFA uuid newInitial newTransitions newAccepting
   where 
-    newInitial = map (++ uuid) initial
-    newAccepting = map (++ uuid) accepting
+    newInitial = initial ++ uuid
+    newAccepting = accepting ++ uuid
     newTransitions = foldrWithKey (\(state, char) 
       -> Data.Map.insert (state ++ uuid, char)) Data.Map.empty transition
   
@@ -116,7 +116,7 @@ appendNFA nfa1 nfa2 = do
   where 
     NFA uuid1 init1 trans1 accept1 = attachUUID nfa1 
     NFA uuid2 init2 trans2 accept2 = attachUUID nfa2
-    newConnections = bipartiteTransitions trans1 accept1 init2
+    newConnections = bipartiteTransitions trans1 [accept1] [init2]
     newTransitions = unionTransitions newConnections (unionTransitions trans1 trans2)
 
 -- >>> appendNFA exampleNFA exampleNFA{uuid="2"}
@@ -133,16 +133,14 @@ alternateNFA nfa1 nfa2 = do
     newInitSt <- randomUUID
     newAccSt <- randomUUID
     let 
-      newInit = [newInitSt] 
-      newAccept = [newAccSt] 
       newConnections = unionTransitions
-        (bipartiteTransitions Data.Map.empty newInit (init1 ++ init2))
+        (bipartiteTransitions Data.Map.empty [newInitSt] [init1, init2])
         (bipartiteTransitions 
-          (Data.Map.union trans1 trans2) (accept1 ++ accept2) newAccept)
+          (Data.Map.union trans1 trans2) [accept1 , accept2] [newAccSt])
       newTransitions = unionTransitions newConnections 
         (unionTransitions trans1 trans2) in
 
-      return $ NFA newUUID newInit newTransitions newAccept
+      return $ NFA newUUID newInitSt newTransitions newAccSt 
     where 
       NFA uuid1 init1 trans1 accept1 = attachUUID nfa1 
       NFA uuid2 init2 trans2 accept2 = attachUUID nfa2 
@@ -160,19 +158,17 @@ kleeneNFA nfa@(NFA uuid init trans accept) = do
   newInitSt <- randomUUID
   newAccSt <- randomUUID
   let 
-    newInit = [newInitSt]
-    newAccept = [newAccSt]
     newTransitions = 
       unionTransitions 
-        (bipartiteTransitions Data.Map.empty newInit (newAccept ++ init))
-        (bipartiteTransitions trans accept (newAccept ++ init))
-  return $ NFA uuid newInit (unionTransitions newTransitions trans) newAccept
+        (bipartiteTransitions Data.Map.empty [newInitSt] [newAccSt, init])
+        (bipartiteTransitions trans [accept] [newAccSt, init])
+  return $ NFA uuid newInitSt (unionTransitions newTransitions trans) newAccSt
 
 -- >>> kleeneNFA exampleNFA
 -- {  uuid: 0 ,
---    initial["ina"] ,
---    transitions: fromList [(("0",'\NUL'),["0"]),(("0",'a'),["0"]),(("ina",'\NUL'),["0"])] ,
---    accepting:["foa"]
+--    initial"cyd" ,
+--    transitions: fromList [(("0",'\NUL'),["0"]),(("0",'a'),["0"]),(("cyd",'\NUL'),["0"])] ,
+--    accepting:"ybp"
 --  }
 
 
