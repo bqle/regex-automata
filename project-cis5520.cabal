@@ -41,7 +41,11 @@ library
   import:
       common-stanza
   exposed-modules:
-      Lib
+      Lib,
+      NFA,
+      NFATest,
+      RandomString,
+      State
   hs-source-dirs:
       src
 
