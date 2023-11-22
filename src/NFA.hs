@@ -12,50 +12,41 @@ import Data.Maybe (fromMaybe)
 import Data.Map (Map, fromList, lookup, empty, foldrWithKey, insert, union)
 import RandomString (randomUUID)
 
--- | Correspond to a state of the automata.
---  We need the Int to distinguish states that have the same name 
--- but are from different NFAs, when combined
-data AutState = AutState {
-  name:: String,
-  nfaId :: Int
-} deriving (Ord, Eq, Show)
-
-
 -- | (current state, new char) -> new states
-type Transition = Map (AutState, Char) [AutState]
+type Transition = Map (String, Char) [String]
 
 -- | Represents the epsilon transitions in NFAs
 epsilon = '\0'
 
-makeTransition :: Transition -> Char -> AutState -> [AutState]
+makeTransition :: Transition -> Char -> String -> [String]
 makeTransition t a s  = nub $ fromMaybe [] (Data.Map.lookup (s, a) t)
 
 -- | Finite NFA with state `s`, alphabet `a` and a monadic context `m`.
 --   The type parameters `s` and `a` are assumed to represent finite set
 --  Assumptions: 1 initial state, 1 accepting state
 data NFA = NFA
-  { uuid :: Int, 
-    initial    :: AutState,
-    transition :: Transition,
-    accepting  :: AutState
+  { uuid :: Int         -- ^ uuid for the DFA
+  , initial    :: String              -- ^ Initial State
+  , transition :: Transition      -- ^ Change state with a context.
+  , accepting  :: String             -- ^ Accepting subset as a predicate.
   }
 
 exampleNFA :: NFA 
 exampleNFA = NFA {
   uuid = 0,
-  initial = AutState "0" 0, 
-  transition = Data.Map.fromList [((AutState "0" 0, 'a'), [AutState "0" 0])],
-  accepting = AutState "0" 0
+  initial = "0", 
+  transition = Data.Map.fromList [(("0", 'a'), ["0"])],
+  accepting = "0"
 }
 
 -- | Find all transitions after taking the
-findNextStates :: Transition -> [AutState] -> Char -> [AutState]
+findNextStates :: Transition -> [String] -> Char -> [String]
 findNextStates transition states a = 
       nub $ exploreEpsilons transition 
         (nub $ concatMap (makeTransition transition a) states)
 
 -- | Expand the states to include all reachable states thru epsilon transitions
-exploreEpsilons :: Transition -> [AutState] -> [AutState]
+exploreEpsilons :: Transition -> [String] -> [String]
 exploreEpsilons transition states = 
   let
     immediateFrontier = nub $ concatMap (makeTransition transition epsilon) states
@@ -65,7 +56,7 @@ exploreEpsilons transition states =
       _ -> exploreEpsilons transition immediateFrontier ++ states
 
 -- Run an NFA & get the final states
-run ::  NFA -> [Char] -> [AutState]
+run ::  NFA -> [Char] -> [String]
 run NFA {uuid, initial, transition, accepting} = 
   foldl (findNextStates transition) 
     (nub (initial : makeTransition transition epsilon initial))
@@ -78,7 +69,7 @@ run NFA {uuid, initial, transition, accepting} =
 instance Show NFA where
   show NFA{uuid, initial, transition, accepting} 
     = "{  uuid: " ++ show uuid ++ " ,\n" ++ 
-      "   initial: " ++ show initial ++ " ,\n" ++ 
+      "   initial" ++ show initial ++ " ,\n" ++ 
       "   transitions: " ++ show transition ++ " ,\n" ++
       "   accepting:" ++ show accepting ++ "\n }"
 
@@ -91,25 +82,22 @@ accept nfa@NFA {initial, transition, accepting} s =
 -- >>> accept exampleNFA "ab"
 -- False
 
-setNfaId :: Int -> AutState -> AutState
-setNfaId id st = st{nfaId = id}
-
 -- | Attach the uuid to every state, update transitions accordingly
 attachUUID :: NFA -> NFA
 attachUUID NFA {uuid, initial, transition, accepting} =
   NFA uuid newInitial newTransitions newAccepting
   where 
-    newInitial = initial {nfaId=uuid}
-    newAccepting = accepting {nfaId=uuid}
+    newInitial = initial ++ show uuid
+    newAccepting = accepting ++ show uuid
     newTransitions = foldrWithKey (\(state, char) val
-      -> Data.Map.insert (state {nfaId=uuid}, char) 
-        (List.map (setNfaId uuid) val)) Data.Map.empty transition
+      -> Data.Map.insert (state ++ show uuid, char) 
+        (List.map (++ show uuid) val)) Data.Map.empty transition
   
 -- >>> attachUUID exampleNFA
 -- {  uuid: 0 ,
 --    initial["00"] ,
 --    transitions: fromList [(("00",'a'),["0"])] ,
---    accept:["00"]
+--    accepting:["00"]
 --  }
 
 -- | Union two transitions
@@ -124,7 +112,7 @@ unionTransitions t1 t2 =
 -- | Create fully bipartite graph from two lists of vertices
 --   We need original transitions because accepting states may already have 
 --   e-transitions
-bipartiteTransitions :: Transition -> [AutState] -> [AutState] -> Transition
+bipartiteTransitions :: Transition -> [String] -> [String] -> Transition
 bipartiteTransitions transOrig s1 s2 = 
   foldl (\acc acceptS -> 
     foldl (\acc initS -> 
@@ -144,8 +132,8 @@ bipartiteTransitions transOrig s1 s2 =
 alphabet :: [Char] -> NFA
 alphabet ls = 
   let
-    initSt = AutState "i" 0
-    accSt = AutState "e" 0
+    initSt = "i"
+    accSt = "e"
     transitions = foldl 
       (\acc v -> Data.Map.insert (initSt, v) [accSt] acc) Data.Map.empty ls
     in 
@@ -173,8 +161,8 @@ append nfa1 nfa2 =
 alternate :: NFA -> NFA -> NFA
 alternate nfa1 nfa2 =  
     let 
-      newInitSt = AutState "i" 0
-      newAccSt = AutState "e" 0
+      newInitSt = "i"
+      newAccSt = "e"
       newConnections = unionTransitions
         (bipartiteTransitions Data.Map.empty [newInitSt] [init1, init2])
         (bipartiteTransitions 
@@ -198,8 +186,8 @@ alternate nfa1 nfa2 =
 kleene :: NFA -> NFA
 kleene nfa = 
   let 
-    newInitSt = AutState "i" 0
-    newAccSt = AutState "e" 0
+    newInitSt = "i"
+    newAccSt = "e"
     NFA _ init trans accept = attachUUID nfa
     newTransitions = 
       unionTransitions 
@@ -209,7 +197,7 @@ kleene nfa =
 
 -- >>> kleene exampleNFA
 -- {  uuid: 0 ,
---    initial: AutState {name = "i", nfaId = 0} ,
---    transitions: fromList [((AutState {name = "0", nfaId = 0},'\NUL'),[AutState {name = "0", nfaId = 0},AutState {name = "e", nfaId = 0}]),((AutState {name = "0", nfaId = 0},'a'),[AutState {name = "0", nfaId = 0}]),((AutState {name = "i", nfaId = 0},'\NUL'),[AutState {name = "0", nfaId = 0},AutState {name = "e", nfaId = 0}])] ,
---    accepting:AutState {name = "e", nfaId = 0}
+--    initial"i" ,
+--    transitions: fromList [(("00",'\NUL'),["00"]),(("00",'a'),["0"]),(("i",'\NUL'),["00"])] ,
+--    accepting:"e"
 --  }
