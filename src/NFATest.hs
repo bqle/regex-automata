@@ -48,5 +48,10 @@ tAlternateNFA =
     accept alternateNFA "" ~?= False
   ]
 
+test_all :: IO Counts
+test_all = runTestTT $ TestList [tAlternateNFA, tKleeneNFA, tAlphabetNFA, tAppendNFA]
 
+-- >>> test_all
+
+-- QUICKCHECK -- 
 
