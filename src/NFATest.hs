@@ -1,3 +1,5 @@
+module NFATest where
+
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import qualified NFA
 import NFA
@@ -48,8 +50,8 @@ tAlternateNFA =
     accept alternateNFA "" ~?= False
   ]
 
-test_all :: IO Counts
-test_all = runTestTT $ TestList [tAlternateNFA, tKleeneNFA, tAlphabetNFA, tAppendNFA]
+test_all_nfa :: IO Counts
+test_all_nfa = runTestTT $ TestList [tAlternateNFA, tKleeneNFA, tAlphabetNFA, tAppendNFA]
 
 -- >>> test_all
 -- Counts {cases = 16, tried = 16, errors = 0, failures = 0}

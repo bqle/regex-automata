@@ -43,9 +43,10 @@ convert nfa@Aut{uuid, initial, transition, accepting} =
       foldl (\acc@(trans, visited, acceptedSt) char ->
         let 
           nextStates = findNextStates transition currentStates char
-          next = flatten nextStates in
+          next = flatten nextStates 
+          newTrans = Data.Map.insert (current, char) next trans in
         if member next visited 
-          then acc
+          then (newTrans, visited, acceptedSt)
           else let
             newTrans = Data.Map.insert (current, char) next trans
             newVisited = Data.Set.insert next visited 
