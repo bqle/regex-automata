@@ -2,7 +2,7 @@ module RegexParser () where
 
 import Data.Bifunctor
 import Data.Char (isAlpha)
-import NFA (NFA, accept, alphabet, alternate, append, kleene)
+import NFA (NFA, accept, alphabet, alternate, append, kleene, uuid)
 
 frst :: (a, b, c) -> a
 frst (a, _, _) = a
@@ -177,3 +177,7 @@ test = regexToNFA "ab" >>= \x -> Just (NFA.accept x "b")
 --    accepting:"\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\""
 --  }
 -- True
+
+-- >>> app = append (alphabet ['a']){uuid=1} (alphabet ['b']){uuid=2}
+-- >>> NFA.accept app "b"
+-- False
