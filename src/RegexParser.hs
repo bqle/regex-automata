@@ -181,3 +181,5 @@ test = regexToNFA "ab" >>= \x -> Just (NFA.accept x "b")
 -- >>> app = append (alphabet ['a']){uuid=1} (alphabet ['b']){uuid=2}
 -- >>> NFA.accept app "b"
 -- False
+-- >>> NFA.accept app "ab"
+-- True
