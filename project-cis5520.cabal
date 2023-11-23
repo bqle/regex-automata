@@ -32,6 +32,10 @@ common common-stanza
     , random
     , mtl
     , set-monad
+    , cryptonite
+    , base16-bytestring
+    , memory
+    , bytestring
   default-language:
     GHC2021
   default-extensions:
@@ -44,8 +48,8 @@ library
       Lib,
       NFA,
       NFATest,
-      RandomString,
-      State
+      DFA,
+      RandomString
   hs-source-dirs:
       src
 

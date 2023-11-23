@@ -2,7 +2,7 @@ import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import qualified NFA
 import NFA
 
-lowercaseChars = ['a'..'b']
+lowercaseChars = ['a'..'z']
 
 alphabetNFA :: NFA 
 alphabetNFA = alphabet lowercaseChars
@@ -52,6 +52,7 @@ test_all :: IO Counts
 test_all = runTestTT $ TestList [tAlternateNFA, tKleeneNFA, tAlphabetNFA, tAppendNFA]
 
 -- >>> test_all
+-- Counts {cases = 16, tried = 16, errors = 0, failures = 0}
 
 -- QUICKCHECK -- 
 

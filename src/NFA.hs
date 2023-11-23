@@ -10,7 +10,8 @@ import Data.Foldable          (foldlM)
 import Control.Monad.Identity (Identity(..))
 import Data.Maybe (fromMaybe)
 import Data.Map (Map, fromList, lookup, empty, foldrWithKey, insert, union)
-import RandomString (randomUUID)
+import RandomString (randomUUID, hashString)
+import Crypto.Hash (hashWith)
 
 -- { GENERAL AUTOMATON TYPES }
 
@@ -87,11 +88,12 @@ attachUUID :: NFA -> NFA
 attachUUID Aut {uuid, initial, transition, accepting} =
   Aut uuid newInitial newTransitions newAccepting
   where 
-    newInitial = initial ++ show uuid
-    newAccepting = accepting ++ show uuid
+    hashWithUUID str = hashString (str ++ show uuid)
+    newInitial = hashWithUUID initial
+    newAccepting = hashWithUUID accepting
     newTransitions = foldrWithKey (\(state, char) val
-      -> Data.Map.insert (state ++ show uuid, char) 
-        (List.map (++ show uuid) val)) Data.Map.empty transition
+      -> Data.Map.insert (hashWithUUID state, char) 
+        (List.map hashWithUUID val)) Data.Map.empty transition
 
 -- | Union two transitions
 unionTransitions :: NFATransition -> NFATransition -> NFATransition
