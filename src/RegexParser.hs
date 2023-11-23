@@ -104,7 +104,7 @@ regexToRPN regex =
           let updatedStack =
                 popStackUntil
                   operatorStack
-                  (\op -> precedence c < precedence op)
+                  (\op -> precedence c <= precedence op)
                   False
            in bimap (outputQueue ++) (c :) updatedStack
       | c == ')' =
@@ -137,23 +137,29 @@ unwrapSingleElem (Just [x]) = Just x
 unwrapSingleElem _ = Nothing
 
 rpnToNFA :: String -> Maybe NFA
-rpnToNFA rpn = unwrapSingleElem (foldl parseCharacter (Just []) rpn)
+rpnToNFA rpn = unwrapSingleElem (fst (foldl parseCharacter (Just [], 0) rpn))
   where
-    parseCharacter :: Maybe [NFA] -> Char -> Maybe [NFA]
-    parseCharacter Nothing _ = Nothing
-    parseCharacter (Just stack) c
+    parseCharacter :: (Maybe [NFA], Int) -> Char -> (Maybe [NFA], Int)
+    parseCharacter (Nothing, _) _ = (Nothing, 0)
+    parseCharacter (Just stack, count) c
       | c `elem` operators = case c of
           '*' ->
-            takeForUnary stack
-              >>= (\x -> Just (kleene (fst x) : snd x))
+            ( takeForUnary stack
+                >>= (\x -> Just (kleene (fst x) {uuid = count} : snd x)),
+              count + 1
+            )
           '|' ->
-            takeForBinary stack
-              >>= (\x -> Just (alternate (frst x) (scnd x) : thrd x))
+            ( takeForBinary stack
+                >>= (\x -> Just (alternate (frst x) (scnd x) {uuid = count} : thrd x)),
+              count + 1
+            )
           '@' ->
-            takeForBinary stack
-              >>= (\x -> Just (append (frst x) (scnd x) : thrd x))
-          _ -> Nothing
-      | otherwise = Just (alphabet [c] : stack)
+            ( takeForBinary stack
+                >>= (\x -> Just (append (frst x) (scnd x) {uuid = count} : thrd x)),
+              count + 1
+            )
+          _ -> (Nothing, count)
+      | otherwise = (Just ((alphabet [c]) {uuid = count} : stack), count + 1)
 
 regexToNFA :: String -> Maybe NFA
 regexToNFA regex = rpnToNFA (regexToRPN regex)
@@ -161,13 +167,13 @@ regexToNFA regex = rpnToNFA (regexToRPN regex)
 -- "a(a|b)*b"
 
 -- test :: Maybe Bool
-test = regexToNFA "ab" >>= \x -> Just (NFA.accept x "b")
+test = regexToNFA "a|b*" >>= \x -> Just (NFA.accept x "")
 
--- >>> regexToRPN "ab"
--- "ab@"
+-- >>> regexToRPN "abb"
+-- "abb@@"
 
 -- >>>  test
--- Just True
+-- Just False
 
 -- >>> append (alphabet ['a']) (alphabet ['b'])
 -- >>> NFA.accept (append (alphabet ['a']) (alphabet ['b'])) "b"
@@ -179,7 +185,7 @@ test = regexToNFA "ab" >>= \x -> Just (NFA.accept x "b")
 -- True
 
 -- >>> app = append (alphabet ['a']){uuid=1} (alphabet ['b']){uuid=2}
--- >>> NFA.accept app "b"
+-- >>> NFA.accept app "ab"
 -- False
 -- >>> NFA.accept app "ab"
 -- True
