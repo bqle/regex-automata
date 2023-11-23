@@ -124,7 +124,7 @@ regexToRPN regex =
 
 takeForBinary :: [a] -> Maybe (a, a, [a])
 takeForBinary nfas = case nfas of
-  x : y : arr -> Just (x, y, arr)
+  x : y : arr -> Just (y, x, arr)
   _ -> Nothing
 
 takeForUnary :: [a] -> Maybe (a, [a])
@@ -160,8 +160,20 @@ regexToNFA regex = rpnToNFA (regexToRPN regex)
 
 -- "a(a|b)*b"
 
-test :: Maybe Bool
-test = regexToNFA "a*b" >>= \x -> Just (NFA.accept x "a")
+-- test :: Maybe Bool
+test = regexToNFA "ab" >>= \x -> Just (NFA.accept x "b")
+
+-- >>> regexToRPN "ab"
+-- "ab@"
 
 -- >>>  test
--- ProgressCancelledException
+-- Just True
+
+-- >>> append (alphabet ['a']) (alphabet ['b'])
+-- >>> NFA.accept (append (alphabet ['a']) (alphabet ['b'])) "b"
+-- {  uuid: 0 ,
+--    initial"\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\"" ,
+--    transitions: fromList [(("\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\"",'\NUL'),["\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\""]),(("\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\"",'a'),["\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\""]),(("\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\"",'b'),["\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\""])] ,
+--    accepting:"\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\""
+--  }
+-- True
