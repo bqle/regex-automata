@@ -72,6 +72,15 @@ exampleNFA =
       accepting = "0"
     }
 
+neverAcceptNFA :: NFA
+neverAcceptNFA =
+  Aut
+    { uuid = 0,
+      initial = "0",
+      transition = Data.Map.empty,
+      accepting = "1"
+    }
+
 -- | Find all transitions after taking the char
 findNextStates :: NFATransition -> [String] -> Char -> [String]
 findNextStates transition starting a =

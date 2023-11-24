@@ -1,8 +1,8 @@
-module RegexParser () where
+module RegexParser where
 
 import Data.Bifunctor
 import Data.Char (isAlpha)
-import NFA (NFA, accept, alphabet, alternate, append, kleene, uuid)
+import NFA (NFA, accept, alphabet, alternate, append, kleene, neverAcceptNFA, uuid)
 
 frst :: (a, b, c) -> a
 frst (a, _, _) = a
@@ -99,7 +99,7 @@ regexToRPN regex =
     parseCharacter (outputQueue, operatorStack) c
       | c `elem` operators
           && peekStack operatorStack == '(' =
-          (outputQueue, c : operatorStack) -- done
+          (outputQueue, c : operatorStack)
       | c `elem` operators =
           let updatedStack =
                 popStackUntil
@@ -114,13 +114,8 @@ regexToRPN regex =
                   (== '(')
                   True
            in first (outputQueue ++) updatedStack
-      | c == '(' = (outputQueue, c : operatorStack) -- done
-      | otherwise = (outputQueue ++ [c], operatorStack) -- done
-
--- >>> regexToRPN "a(a|b)*b"
-
--- >>> injectConcatSymbol "a(a|b)*b"
--- "a@(a|b)*@b"
+      | c == '(' = (outputQueue, c : operatorStack)
+      | otherwise = (outputQueue ++ [c], operatorStack)
 
 takeForBinary :: [a] -> Maybe (a, a, [a])
 takeForBinary nfas = case nfas of
@@ -137,7 +132,14 @@ unwrapSingleElem (Just [x]) = Just x
 unwrapSingleElem _ = Nothing
 
 rpnToNFA :: String -> Maybe NFA
-rpnToNFA rpn = unwrapSingleElem (fst (foldl parseCharacter (Just [], 0) rpn))
+rpnToNFA rpn =
+  if null rpn
+    then Just neverAcceptNFA
+    else
+      unwrapSingleElem
+        ( fst
+            (foldl parseCharacter (Just [], 0) rpn)
+        )
   where
     parseCharacter :: (Maybe [NFA], Int) -> Char -> (Maybe [NFA], Int)
     parseCharacter (Nothing, _) _ = (Nothing, 0)
@@ -163,29 +165,3 @@ rpnToNFA rpn = unwrapSingleElem (fst (foldl parseCharacter (Just [], 0) rpn))
 
 regexToNFA :: String -> Maybe NFA
 regexToNFA regex = rpnToNFA (regexToRPN regex)
-
--- "a(a|b)*b"
-
--- test :: Maybe Bool
-test = regexToNFA "a|b*" >>= \x -> Just (NFA.accept x "")
-
--- >>> regexToRPN "abb"
--- "abb@@"
-
--- >>>  test
--- Just False
-
--- >>> append (alphabet ['a']) (alphabet ['b'])
--- >>> NFA.accept (append (alphabet ['a']) (alphabet ['b'])) "b"
--- {  uuid: 0 ,
---    initial"\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\"" ,
---    transitions: fromList [(("\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\"",'\NUL'),["\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\""]),(("\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\"",'a'),["\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\""]),(("\"a4e167a76a05add8a8654c169b07b0447a916035aef602df103e8ae0fe2ff390\"",'b'),["\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\""])] ,
---    accepting:"\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\""
---  }
--- True
-
--- >>> app = append (alphabet ['a']){uuid=1} (alphabet ['b']){uuid=2}
--- >>> NFA.accept app "ab"
--- False
--- >>> NFA.accept app "ab"
--- True
