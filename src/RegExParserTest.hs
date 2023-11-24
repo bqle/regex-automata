@@ -1,7 +1,5 @@
 module RegExParserTest where
 
--- accept alternateNFA "a" ~?= True,
-
 import NFA
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
