@@ -142,6 +142,13 @@ unionTransitions t1 t2 =
     t2
     t1
 
+-- | Insert new connection into NFA 
+insertConnection :: NFATransition -> (String, Char, String) -> NFATransition
+insertConnection trans (u, c, v) = 
+  case Data.Map.lookup (u, c) trans of
+    Nothing -> Data.Map.insert (u, c) [v] trans
+    Just arr -> Data.Map.insert (u, c) ([v |v `notElem` arr] ++ arr) trans
+
 -- | Create fully bipartite graph from two lists of vertices
 --   We need original transitions because accepting states may already have
 --   e-transitions
