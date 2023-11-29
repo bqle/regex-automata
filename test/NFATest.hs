@@ -4,8 +4,8 @@ import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import Data.List
 import Data.Map
 import Data.Maybe
-import qualified NFA
 import NFA
+import qualified NFA
 import Test.QuickCheck as QC
 import Data.Map
 import Control.Monad (replicateM)
@@ -82,35 +82,6 @@ generateConnectionList strs count = replicateM count genConnection
       let str1 = strs !! index1
       let str2 = strs !! index2
       return (str1, c, str2)
-
--- | Helper for find accpting string given nfa, starting state, and visited 
--- states
-findAcceptingStringH :: NFA -> String -> [String] -> Maybe String
-findAcceptingStringH nfa@Aut{uuid, initial, transition, accepting} start 
-  visited 
-  | start == accepting = Just "" 
-  | otherwise = 
-    if start `elem` visited then Nothing
-    else let 
-      alphabet = getAlphabet nfa 
-      in 
-        Data.List.foldr 
-        (\char acc -> 
-          if isJust acc then acc
-          else case Data.Map.lookup (start, char) transition of
-            Nothing -> Nothing 
-            Just nexts -> 
-              do 
-                v <- Data.List.foldl 
-                  (\acc next -> if isJust acc then acc 
-                    else findAcceptingStringH nfa next (start : visited)) Nothing nexts
-                return (char : v)
-        ) Nothing alphabet 
-
--- | Find an example of an accepted string
-findAcceptingString :: NFA -> Maybe String
-findAcceptingString nfa = 
-  findAcceptingStringH nfa (initial nfa) []
 
 instance Arbitrary NFA where
   arbitrary :: Gen NFA

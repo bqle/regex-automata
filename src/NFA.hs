@@ -7,7 +7,7 @@ import Data.List (nub)
 import Data.List qualified as List
 import Data.Map (Map, empty, foldrWithKey, fromList, insert, lookup, union)
 import Data.Set (Set, insert, empty, toList, member, insert, fromList)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import RandomString (hashString, randomUUID)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import Test.QuickCheck qualified as QC
@@ -229,3 +229,33 @@ kleene nfa =
           (bipartiteTransitions Data.Map.empty [newInitSt] [newAccSt, init])
           (bipartiteTransitions trans [accept] [newAccSt, init])
    in Aut 0 newInitSt (unionTransitions newTransitions trans) newAccSt
+
+-- TESTING -- 
+-- | Helper for find accpting string given nfa, starting state, and visited 
+-- states
+findAcceptingStringH :: NFA -> String -> [String] -> Maybe String
+findAcceptingStringH nfa@Aut{uuid, initial, transition, accepting} start 
+  visited 
+  | start == accepting = Just "" 
+  | otherwise = 
+    if start `elem` visited then Nothing
+    else let 
+      alphabet = getAlphabet nfa 
+      in 
+        foldr 
+        (\char acc -> 
+          if isJust acc then acc
+          else case Data.Map.lookup (start, char) transition of
+            Nothing -> Nothing 
+            Just nexts -> 
+              do 
+                v <- foldl 
+                  (\acc next -> if isJust acc then acc 
+                    else findAcceptingStringH nfa next (start : visited)) Nothing nexts
+                return (char : v)
+        ) Nothing alphabet 
+
+-- | Find an example of an accepted string
+findAcceptingString :: NFA -> Maybe String
+findAcceptingString nfa = 
+  findAcceptingStringH nfa (initial nfa) []
