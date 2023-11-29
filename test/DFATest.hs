@@ -3,7 +3,9 @@ module DFATest where
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import DFA 
 import NFA (transition, NFA, makeTransition, findNextStates)
+import qualified NFA
 import NFATest
+import Test.QuickCheck as QC
 
 alphabetDFA :: DFA
 alphabetDFA = convert alphabetNFA
@@ -51,3 +53,9 @@ test_all_dfa = runTestTT $ TestList [tAlphabetDFA, tAlternateDFA, tAppendDFA, tK
 
 -- >>> test_all_dfa
 -- Counts {cases = 16, tried = 16, errors = 0, failures = 0}
+
+-- QUICKCHECK --
+
+-- For any string, DFA accepts iff NFA accepts
+prop_DFAiffNFA :: NFA -> String -> Bool
+prop_DFAiffNFA nfa str = NFA.accept nfa str == DFA.accept (convert nfa) str
