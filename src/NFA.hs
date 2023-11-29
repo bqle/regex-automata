@@ -6,7 +6,7 @@ import Data.Foldable (foldlM)
 import Data.List (nub)
 import Data.List qualified as List
 import Data.Map (Map, empty, foldrWithKey, fromList, insert, lookup, union)
-import Data.Set (Set, insert, empty, toList, member, insert, fromList)
+import Data.Set
 import Data.Maybe (fromMaybe, isJust)
 import RandomString (hashString, randomUUID)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
@@ -22,14 +22,20 @@ data Automaton transitionT acceptingT = Aut
   }
 
 -- | (current state, new char) -> new states
-type Transition v = Map (String, Char) v
+type Transition v = Map String (Map Char v)
+
+-- | Lookup in a transition
+transitionLookup :: String -> Char -> Transition v -> Maybe v
+transitionLookup st a trans = do
+  state <- Data.Map.lookup st trans
+  Data.Map.lookup a state
 
 makeTransition :: Transition v -> v -> Char -> String -> v
 makeTransition trans def char st =
-  fromMaybe def (Data.Map.lookup (st, char) trans)
+  fromMaybe def (transitionLookup st char trans)
 
 -- { NFA SPECIALIZATIONS }
-type NFATransition = Transition [String]
+type NFATransition = Transition (Set String)
 
 -- | Finite NFA with state `s`, alphabet `a` and a monadic context `m`.
 --   The type parameters `s` and `a` are assumed to represent finite set
@@ -62,7 +68,9 @@ exampleNFA =
   Aut
     { uuid = 0,
       initial = "0",
-      transition = Data.Map.fromList [(("0", 'a'), ["0"])],
+      transition = Data.Map.fromList 
+        [("0", Data.Map.fromList [('a', Data.Set.fromList ["0"])])
+        ],
       accepting = "0"
     }
 
@@ -75,30 +83,29 @@ neverAcceptNFA =
       accepting = "1"
     }
 
+-- | Expand the states to include all reachable states thru epsilon transitions
+exploreEpsilons :: NFATransition -> Set String -> Set String
+exploreEpsilons transition states =
+  let 
+    immediateFrontier = Data.Set.foldr 
+      (\st acc -> 
+        Data.Set.union acc (makeTransition transition Data.Set.empty epsilon st)
+      ) Data.Set.empty states
+   in 
+    if immediateFrontier == Data.Set.empty then states
+    else Data.Set.union states (exploreEpsilons transition immediateFrontier)
+
 -- | Find all transitions after taking the char
-findNextStates :: NFATransition -> [String] -> Char -> [String]
+findNextStates :: NFATransition -> [String] -> Char -> Set String
 findNextStates transition starting a =
-  nub $
     exploreEpsilons
       transition
       (nub $ concatMap (makeTransition transition [] a) starting)
 
--- | Expand the states to include all reachable states thru epsilon transitions
-exploreEpsilons :: NFATransition -> [String] -> [String]
-exploreEpsilons transition states =
-  let immediateFrontier =
-        nub $
-          concatMap
-            (makeTransition transition [] epsilon)
-            states
-   in case immediateFrontier of
-        [] -> states
-        _ -> exploreEpsilons transition immediateFrontier ++ states
-
 -- | Run an NFA & get the final states
 run :: NFA -> [Char] -> [String]
 run Aut {initial, transition, accepting} =
-  foldl (findNextStates transition) (exploreEpsilons transition [initial])
+  Data.List.foldl (findNextStates transition) (exploreEpsilons transition [initial])
 
 accept :: NFA -> [Char] -> Bool
 accept nfa@Aut {accepting} s =
@@ -112,15 +119,19 @@ attachUUID Aut {uuid, initial, transition, accepting} =
     hashWithUUID str = hashString (str ++ show uuid)
     newInitial = hashWithUUID initial
     newAccepting = hashWithUUID accepting
-    newTransitions =
-      foldrWithKey
-        ( \(state, char) val ->
-            Data.Map.insert
-              (hashWithUUID state, char)
-              (List.map hashWithUUID val)
+    newStateTrans = 
+      foldrWithKey 
+        ( \char val -> 
+          Data.Map.insert char (List.map hashWithUUID val)
         )
-        Data.Map.empty
-        transition
+      Data.Map.empty
+    newTransitions = 
+      foldrWithKey 
+        ( \state stateMap -> 
+          Data.Map.insert state (newStateTrans stateMap)
+        )
+      Data.Map.empty
+      transition
 
 -- | Union two transitions
 unionTransitions :: NFATransition -> NFATransition -> NFATransition
@@ -151,7 +162,7 @@ bipartiteTransitions transOrig s1 s2 =
   let 
     newS1 = nub s1
     newS2 = nub s2 in
-  foldl ( \acc uS -> 
+  Data.List.foldl ( \acc uS -> 
       Data.Map.insert (uS, epsilon) 
       ( nub 
         (fromMaybe [] (Data.Map.lookup (uS, epsilon) acc) ++ newS2)
@@ -179,7 +190,7 @@ alphabet ls =
   let initSt = "i"
       accSt = "e"
       transitions =
-        foldl
+        Data.List.foldl
           (\acc v -> Data.Map.insert (initSt, v) [accSt] acc)
           Data.Map.empty
           ls
