@@ -68,7 +68,7 @@ generateRandomStringList len count = replicateM count $
 
 -- Generate list of count connectsion between nodes given nodes list
 generateConnectionList :: [String] -> Int -> Gen [(String, Char, String)]
-generateConnectionList strs count = replicateM count $ genConnection
+generateConnectionList strs count = replicateM count genConnection
   where 
     strLen = length strs
     genConnection = do
