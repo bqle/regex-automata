@@ -1,7 +1,5 @@
 module NFA where
 
--- Note, we are using Data.Set.Monad instead of regular Set
-
 import Control.Monad.Identity (Identity (..))
 import Crypto.Hash (hashWith)
 import Data.Foldable (foldlM)
@@ -9,11 +7,6 @@ import Data.List (nub)
 import Data.List qualified as List
 import Data.Map (Map, empty, foldrWithKey, fromList, insert, lookup, union)
 import Data.Maybe (fromMaybe)
-import Data.Set.Monad
-  ( Set,
-    empty,
-    fromList,
-  )
 import RandomString (hashString, randomUUID)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import Test.QuickCheck qualified as QC

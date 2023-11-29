@@ -72,3 +72,4 @@ test_all_regex_parser =
         tRegexToRPN,
         tRegexToNFA
       ]
+

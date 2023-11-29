@@ -28,11 +28,11 @@ hashString input =
       hashed = hash (C8.pack input)
   in show (convertToBase Base16 hashed :: ByteString)
 
--- Example: Generating a random string of length 5
+-- Example
 main :: IO ()
 main = do
   randStr <- randomUUID
   putStrLn randStr
-  putStrLn (hashString "asdfiasdfiuasifajslfasl;cdkjas;kldcjasdfadsjflak;cjsdc;lasd")
+  putStrLn (hashString "hash me a random string please")
   
 -- >>> main
