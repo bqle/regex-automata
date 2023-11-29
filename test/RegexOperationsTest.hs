@@ -1,4 +1,4 @@
-module RegExOperationsTest where
+module RegexOperationsTest where
 
 import NFA
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
