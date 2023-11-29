@@ -47,9 +47,10 @@ library
   exposed-modules:
       Lib,
       NFA,
-      NFATest,
       DFA,
-      RandomString
+      RandomString,
+      RegexOperations,
+      RegexParser
   hs-source-dirs:
       src
 

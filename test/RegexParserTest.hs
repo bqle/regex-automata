@@ -1,4 +1,4 @@
-module RegExParserTest where
+module RegexParserTest where
 
 import NFA
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
@@ -72,3 +72,4 @@ test_all_regex_parser =
         tRegexToRPN,
         tRegexToNFA
       ]
+
