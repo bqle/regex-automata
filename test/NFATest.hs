@@ -1,11 +1,15 @@
 module NFATest where
 
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
+import Data.List
+import Data.Map
+import Data.Maybe
 import qualified NFA
 import NFA
 import Test.QuickCheck as QC
 import Data.Map
 import Control.Monad (replicateM)
+import NFA (countTransitions)
 
 lowercaseChars = ['a'..'z']
 
@@ -56,8 +60,8 @@ tAlternateNFA =
 test_all_nfa :: IO Counts
 test_all_nfa = runTestTT $ TestList [tAlternateNFA, tKleeneNFA, tAlphabetNFA, tAppendNFA]
 
--- >>> test_all
--- Counts {cases = 16, tried = 16, errors = 0, failures = 0}
+-- >>> test_all_nfa
+-- Variable not in scope: test_all
 
 -- QUICKCHECK -- 
 
@@ -78,6 +82,35 @@ generateConnectionList strs count = replicateM count genConnection
       let str1 = strs !! index1
       let str2 = strs !! index2
       return (str1, c, str2)
+
+-- | Helper for find accpting string given nfa, starting state, and visited 
+-- states
+findAcceptingStringH :: NFA -> String -> [String] -> Maybe String
+findAcceptingStringH nfa@Aut{uuid, initial, transition, accepting} start 
+  visited 
+  | start == accepting = Just "" 
+  | otherwise = 
+    if start `elem` visited then Nothing
+    else let 
+      alphabet = getAlphabet nfa 
+      in 
+        Data.List.foldr 
+        (\char acc -> 
+          if isJust acc then acc
+          else case Data.Map.lookup (start, char) transition of
+            Nothing -> Nothing 
+            Just nexts -> 
+              do 
+                v <- Data.List.foldl 
+                  (\acc next -> if isJust acc then acc 
+                    else findAcceptingStringH nfa next (start : visited)) Nothing nexts
+                return (char : v)
+        ) Nothing alphabet 
+
+-- | Find an example of an accepted string
+findAcceptingString :: NFA -> Maybe String
+findAcceptingString nfa = 
+  findAcceptingStringH nfa (initial nfa) []
 
 instance Arbitrary NFA where
   arbitrary :: Gen NFA
@@ -100,4 +133,55 @@ instance Arbitrary NFA where
     let smallerTrans = shrink transition in 
       Prelude.map (\newTrans -> Aut uuid initial newTrans accepting) 
         smallerTrans
+
+prop_bipartiteTrans :: [String] -> [String] -> Bool
+prop_bipartiteTrans s1 s2 = countTransitions 
+  (bipartiteTransitions Data.Map.empty s1 s2) == 
+    length (nub s1) * length (nub s2)
+
+prop_nfaUniqueEndStates :: NFA -> Bool
+prop_nfaUniqueEndStates nfa@Aut{uuid, initial, transition, accepting}=
+  foldrWithKey (\_ vs acc -> acc && length (nub vs) == length vs) True transition
+
+prop_alternateStillAccepts :: NFA -> NFA -> Property
+prop_alternateStillAccepts n1 n2 = 
+  let 
+    a1 = findAcceptingString n1 in
+  isJust a1 ==> 
+  let s = fromJust a1 in 
+    accept n1 s && accept (alternate n1{uuid=1} n2{uuid=2}) s
+
+prop_appendStillAccepts :: NFA -> NFA -> Property
+prop_appendStillAccepts n1 n2 = 
+  let 
+    a1 = findAcceptingString n1 
+    a2 = findAcceptingString n2 in
+  isJust a1  && isJust a2 ==> 
+  let 
+    s1 = fromJust a1 
+    s2 = fromJust a2 in 
+      accept n1 s1 && accept n2 s2 && 
+      accept (append n1{uuid=1} n2{uuid=2}) (s1 ++ s2)
+
+prop_kleeneStillAccepts:: NFA -> Int -> Property
+prop_kleeneStillAccepts n1 k = 
+  let 
+    a1 = findAcceptingString n1 in 
+  isJust a1 ==> 
+  let 
+    s1 = fromJust a1 in
+      accept n1 s1 && 
+      accept (kleene n1) (concat $ replicate k s1)
+
+-- | IO 
+main :: IO ()
+main = do 
+  nfa <- QC.generate (arbitrary :: Gen NFA)
+  let acceptStr = findAcceptingString nfa in
+    case acceptStr of
+      Nothing -> print "No accepting string"
+      Just str -> do
+        print (findAcceptingString nfa )
+        print nfa
+        print (accept nfa str)
   

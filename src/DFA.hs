@@ -22,12 +22,6 @@ run Aut {uuid, initial, transition, accepting} =
 accept :: DFA -> [Char] -> Bool
 accept dfa@Aut {accepting} s = DFA.run dfa s `elem` accepting
 
--- | Get all the characters that have a transition in DFA
-getAlphabet :: NFA -> [Char]
-getAlphabet nfa@Aut{transition} = 
-  Data.Set.toList $ foldrWithKey (\(_, char) _ -> Data.Set.insert char) Data.Set.empty transition
-
-
 -- | Convert NFA to DFA
 convert :: NFA -> DFA
 convert nfa@Aut{uuid, initial, transition, accepting} = 
