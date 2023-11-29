@@ -143,13 +143,20 @@ prop_nfaUniqueEndStates :: NFA -> Bool
 prop_nfaUniqueEndStates nfa@Aut{uuid, initial, transition, accepting}=
   foldrWithKey (\_ vs acc -> acc && length (nub vs) == length vs) True transition
 
+prop_findAcceptingString :: NFA -> Property 
+prop_findAcceptingString nfa = 
+  let a1 = findAcceptingString nfa in 
+    isJust a1 ==> 
+    let s = fromJust a1 in 
+      accept nfa s
+
 prop_alternateStillAccepts :: NFA -> NFA -> Property
 prop_alternateStillAccepts n1 n2 = 
   let 
     a1 = findAcceptingString n1 in
   isJust a1 ==> 
   let s = fromJust a1 in 
-    accept n1 s && accept (alternate n1{uuid=1} n2{uuid=2}) s
+    accept (alternate n1{uuid=1} n2{uuid=2}) s
 
 prop_appendStillAccepts :: NFA -> NFA -> Property
 prop_appendStillAccepts n1 n2 = 
@@ -160,7 +167,6 @@ prop_appendStillAccepts n1 n2 =
   let 
     s1 = fromJust a1 
     s2 = fromJust a2 in 
-      accept n1 s1 && accept n2 s2 && 
       accept (append n1{uuid=1} n2{uuid=2}) (s1 ++ s2)
 
 prop_kleeneStillAccepts:: NFA -> Int -> Property
@@ -170,7 +176,6 @@ prop_kleeneStillAccepts n1 k =
   isJust a1 ==> 
   let 
     s1 = fromJust a1 in
-      accept n1 s1 && 
       accept (kleene n1) (concat $ replicate k s1)
 
 -- | IO 
