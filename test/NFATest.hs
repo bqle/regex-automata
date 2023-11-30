@@ -6,6 +6,9 @@ import Data.Map
 import Data.Maybe
 import NFA
 import qualified NFA
+import Data.Set (fromList )
+import Data.Set qualified as Set
+import Test.QuickCheck (quickCheckAll)
 import Test.QuickCheck as QC
 import Data.Map
 import Control.Monad (replicateM)
@@ -107,12 +110,8 @@ instance Arbitrary NFA where
 
 prop_bipartiteTrans :: [String] -> [String] -> Bool
 prop_bipartiteTrans s1 s2 = countTransitions 
-  (bipartiteTransitions Data.Map.empty s1 s2) == 
+  (bipartiteTransitions Data.Map.empty (Set.fromList s1) (Set.fromList s2)) == 
     length (nub s1) * length (nub s2)
-
-prop_nfaUniqueEndStates :: NFA -> Bool
-prop_nfaUniqueEndStates nfa@Aut{uuid, initial, transition, accepting}=
-  foldrWithKey (\_ vs acc -> acc && length (nub vs) == length vs) True transition
 
 prop_findAcceptingString :: NFA -> Property 
 prop_findAcceptingString nfa = 
@@ -152,6 +151,11 @@ prop_kleeneStillAccepts n1 k =
 -- | IO 
 main :: IO ()
 main = do 
+  _ <- QC.quickCheck prop_bipartiteTrans
+  _ <- QC.quickCheck prop_alternateStillAccepts
+  _ <- QC.quickCheck prop_appendStillAccepts
+  _ <- QC.quickCheck prop_kleeneStillAccepts
+  _ <- QC.quickCheck prop_findAcceptingString
   nfa <- QC.generate (arbitrary :: Gen NFA)
   let acceptStr = findAcceptingString nfa in
     case acceptStr of

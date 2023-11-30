@@ -59,3 +59,4 @@ test_all_dfa = runTestTT $ TestList [tAlphabetDFA, tAlternateDFA, tAppendDFA, tK
 -- For any string, DFA accepts iff NFA accepts
 prop_DFAiffNFA :: NFA -> String -> Bool
 prop_DFAiffNFA nfa str = NFA.accept nfa str == DFA.accept (convert nfa) str
+

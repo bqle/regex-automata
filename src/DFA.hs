@@ -2,6 +2,7 @@ module DFA where
 
 import NFA
 import Data.Set (Set, insert, empty, toList, member, insert, fromList)
+import Data.Set qualified as Set
 import Data.Map (Map, fromList, foldrWithKey, empty, insert)
 import Data.List (sort, foldl)
 
@@ -28,10 +29,10 @@ convert nfa@Aut{uuid, initial, transition, accepting} =
   Aut 0 initialDfa newTransition acceptedSt
   where 
     alphabet = getAlphabet nfa
-    flatten :: [String] -> String
-    flatten nfaStates = show (sort nfaStates)
+    flatten :: Set String -> String
+    flatten nfaStates = show (sort (Set.toList nfaStates))
     exploreAllTransitions :: (DFATransition, Set String, [String]) 
-      -> [String] -> (DFATransition, Set String, [String])
+      -> Set String -> (DFATransition, Set String, [String])
     exploreAllTransitions acc currentStates =
       let current = flatten currentStates in 
       foldl (\acc@(trans, visited, acceptedSt) char ->
@@ -48,7 +49,7 @@ convert nfa@Aut{uuid, initial, transition, accepting} =
           in
           exploreAllTransitions (newTrans, newVisited, newAcceptedSt) nextStates
         ) acc alphabet
-    initialStates = exploreEpsilons transition [initial]
+    initialStates = exploreEpsilons transition (Set.singleton initial)
     initialDfa = flatten initialStates
     (newTransition, v, acceptedSt) = exploreAllTransitions (Data.Map.empty, 
       Data.Set.fromList [initialDfa], 
