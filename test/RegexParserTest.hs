@@ -1,6 +1,7 @@
 module RegexParserTest where
 
 import Control.Monad qualified as Monad
+import Data.Maybe
 import NFA
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
@@ -92,17 +93,17 @@ genRegExString = QC.sized gen
 -- >>> QC.sample' genRegExString
 -- ["b","((a))","(b)","b*|(a)*","(a**)|(b)b*","(b)b|c*ab*","(c*)|c*(c)","(a|c)|b|ba*a*|c*","(a**)|((c))|cb*a*c|a|(b)|(c|ca|c)","aa**b*|((b))|(cbb)|a|b**","((ca|a)|cac*)"]
 
--- Tests that we correctly seperate all characters to 'inject' the '@', or append symbol
-prop_no_adjacent_chars :: String -> QC.Property
-prop_no_adjacent_chars str = undefined
+prop_rpn_correct_length :: String -> Bool
+prop_rpn_correct_length str =
+  length (regexToRPN str)
+    == length (filter (\x -> x /= '(' && x /= ')') (injectConcatSymbol str))
 
-prop_parseable_rpn :: String -> QC.Property
-prop_parseable_rpn = undefined
-
--- Does len(RPN) = len(Regex str) - # of parentheses
-prop_rpn_correct_length :: String -> QC.Property
-prop_rpn_correct_length = undefined
+-- >>> QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
 
 -- Does gnerated regex return None, if so FAIL
-prop_parseable_regex :: String -> QC.Property
-prop_parseable_regex = undefined
+prop_parseable_regex :: String -> Bool
+prop_parseable_regex str = isJust (regexToNFA str)
+
+-- >>> QC.quickCheck (QC.forAll genRegExString prop_parseable_regex)
+
+-- findAcceptingString
