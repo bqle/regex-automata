@@ -1,4 +1,20 @@
-module NFA where
+module NFA (
+  NFA,
+  alphabet, 
+  append,
+  kleene,
+  run,
+  accept,
+  alternate,
+  findAcceptingString,
+  neverAcceptNFA,
+  makeTransition,
+  exploreEpsilons,
+  findNextStates,
+  getAlphabet,
+  Transition,
+  Automaton (..),
+) where
 
 import Control.Monad.Identity (Identity (..))
 import Crypto.Hash (hashWith)
@@ -10,7 +26,7 @@ import Data.Map (Map, empty, foldrWithKey, fromList, insert, lookup, union,
 import Data.Set (Set, insert, empty, toList, member, insert, fromList, fold, union)
 import Data.Set qualified as Set
 import Data.Maybe (fromMaybe, isJust)
-import RandomString (hashString, randomUUID)
+import RandomString (hashString)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import Test.QuickCheck qualified as QC
 

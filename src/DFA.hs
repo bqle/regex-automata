@@ -1,6 +1,10 @@
-module DFA where
+module DFA (
+  DFA.run,
+  DFA.accept,
+  convert,
+) where
 
-import NFA
+import NFA 
 import Data.Set (Set, insert, empty, toList, member, insert, fromList)
 import Data.Set qualified as Set
 import Data.Map (Map, fromList, foldrWithKey, empty, insert)
