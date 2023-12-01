@@ -1,4 +1,4 @@
-module RegexParser where
+module RegexParser (regexToRPN, injectConcatSymbol, popStackUntil, regexToNFA) where
 
 import Data.Bifunctor
 import Data.Char (isAlpha)

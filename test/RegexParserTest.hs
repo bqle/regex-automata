@@ -1,8 +1,11 @@
 module RegexParserTest where
 
+import Control.Monad qualified as Monad
+import Data.Maybe
 import NFA
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
+import Test.QuickCheck qualified as QC
 
 tPopStackUntil =
   "popStackUntil"
@@ -73,3 +76,34 @@ test_all_regex_parser =
         tRegexToNFA
       ]
 
+(+++) x y z = x ++ y ++ z
+
+genRegExString = QC.sized gen
+  where
+    gen :: Int -> QC.Gen String
+    gen n =
+      QC.frequency
+        [ (1, QC.elements ["a", "b", "c"]),
+          (n, Monad.liftM2 (++) (gen (n `div` 2)) (gen (n `div` 2))),
+          (n, Monad.liftM3 (+++) (return "(") (gen (n `div` 2)) (return ")")),
+          (n, Monad.liftM2 (++) (gen (n `div` 2)) (return "*")),
+          (n, Monad.liftM3 (+++) (gen (n `div` 2)) (return "|") (gen (n `div` 2)))
+        ]
+
+-- >>> QC.sample' genRegExString
+-- ["b","((a))","(b)","b*|(a)*","(a**)|(b)b*","(b)b|c*ab*","(c*)|c*(c)","(a|c)|b|ba*a*|c*","(a**)|((c))|cb*a*c|a|(b)|(c|ca|c)","aa**b*|((b))|(cbb)|a|b**","((ca|a)|cac*)"]
+
+prop_rpn_correct_length :: String -> Bool
+prop_rpn_correct_length str =
+  length (regexToRPN str)
+    == length (filter (\x -> x /= '(' && x /= ')') (injectConcatSymbol str))
+
+-- >>> QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
+
+-- Does gnerated regex return None, if so FAIL
+prop_parseable_regex :: String -> Bool
+prop_parseable_regex str = isJust (regexToNFA str)
+
+-- >>> QC.quickCheck (QC.forAll genRegExString prop_parseable_regex)
+
+-- findAcceptingString
