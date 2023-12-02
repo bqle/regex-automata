@@ -71,6 +71,4 @@ subset :: String -> String -> Maybe Bool
 subset str1 str2 = do
   nfa1 <- regexToNFA str1
   nfa2 <- regexToNFA str2
-  Just $ convert nfa1 `isSubset` convert nfa2
-  
-
+  return $ convert nfa1 `isSubset` convert nfa2

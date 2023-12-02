@@ -1,11 +1,11 @@
 module DFA 
--- (
---   DFA,
---   DFA.run,
---   DFA.accept,
---   convert,
---   isSubset,
--- ) 
+(
+  DFA,
+  DFA.run,
+  DFA.accept,
+  convert,
+  isSubset,
+) 
 where
 
 import NFA 

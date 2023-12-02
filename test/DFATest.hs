@@ -3,7 +3,7 @@ module DFATest where
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import DFA (DFA, accept, convert)
 import qualified DFA
-import NFA (transition, NFA, makeTransition, findNextStates)
+import NFA (NFA)
 import qualified NFA
 import NFATest
 import qualified NFATest
