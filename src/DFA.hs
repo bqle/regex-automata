@@ -1,26 +1,32 @@
-module DFA (
-  DFA.run,
-  DFA.accept,
-  convert,
-) where
+module DFA 
+-- (
+--   DFA,
+--   DFA.run,
+--   DFA.accept,
+--   convert,
+--   isSubset,
+-- ) 
+where
 
 import NFA 
-import Data.Set (Set, insert, empty, toList, member, insert, fromList)
+import Data.Set (Set, insert, empty, toList, member, insert, fromList, singleton)
 import Data.Set qualified as Set
 import Data.Map (Map, fromList, foldrWithKey, empty, insert)
+import Data.Map qualified as Map
 import Data.List (sort, foldl)
+import RandomString (hashString)
 
 -- { DFA SPECIALIZATION }
-type DFATransition = Transition String
+type DFATransition = Transition State
 
-type DFA = Automaton DFATransition [String]
+type DFA = Automaton DFATransition (Set State)
 
 -- | A rejecting state for all DFAs. Will be forever dead once reach this state
-rejectingSt :: String
+rejectingSt :: State
 rejectingSt = "r"
 
 -- | Run a DFA & get the final state
-run :: DFA -> [Char] -> String
+run :: DFA -> [Char] -> State
 run Aut {uuid, initial, transition, accepting} = 
   Prelude.foldl (flip (makeTransition transition rejectingSt)) initial
 
@@ -33,32 +39,106 @@ convert nfa@Aut{uuid, initial, transition, accepting} =
   Aut 0 initialDfa newTransition acceptedSt
   where 
     alphabet = getAlphabet nfa
-    flatten :: Set String -> String
-    flatten nfaStates = show (sort (Set.toList nfaStates))
-    exploreAllTransitions :: (DFATransition, Set String, [String]) 
-      -> Set String -> (DFATransition, Set String, [String])
+    flatten :: Set State -> State
+    flatten nfaStates = hashString $ show (sort (Set.toList nfaStates))
+    exploreAllTransitions :: (DFATransition, Set State, Set State) 
+      -> Set String -> (DFATransition, Set State, Set State)
     exploreAllTransitions acc currentStates =
       let current = flatten currentStates in 
       foldl (\acc@(trans, visited, acceptedSt) char ->
         let 
           nextStates = findNextStates transition currentStates char
           next = flatten nextStates 
-          newTrans = Data.Map.insert (current, char) next trans in
-        if member next visited 
+          newTrans = Map.insert (current, char) next trans in
+        if char == '\NUL' then acc
+        else if member next visited 
           then (newTrans, visited, acceptedSt)
           else let
-            newTrans = Data.Map.insert (current, char) next trans
+            newTrans = Map.insert (current, char) next trans
             newVisited = Data.Set.insert next visited 
-            newAcceptedSt = [next | accepting `elem` nextStates] ++ acceptedSt
+            newAcceptedSt = 
+              if accepting `elem` nextStates 
+                then Data.Set.insert next acceptedSt
+                else acceptedSt
           in
           exploreAllTransitions (newTrans, newVisited, newAcceptedSt) nextStates
         ) acc alphabet
     initialStates = exploreEpsilons transition (Set.singleton initial)
     initialDfa = flatten initialStates
-    (newTransition, v, acceptedSt) = exploreAllTransitions (Data.Map.empty, 
+    (newTransition, v, acceptedSt) = exploreAllTransitions (Map.empty, 
       Data.Set.fromList [initialDfa], 
-       [initialDfa | accepting `elem` initialStates]) initialStates
+      if accepting `elem` initialStates then singleton initialDfa else 
+        Set.empty
+        )
+    --    [initialDfa | accepting `elem` initialStates]) 
+       initialStates
 
-  
+-- | Get set of all reachable states
+getReachableStates :: DFA -> Set State 
+getReachableStates dfa@Aut {initial} = 
+  Set.insert rejectingSt (aux dfa initial Set.empty)
+  where 
+    alphabet = getAlphabet dfa
+    aux dfa@Aut{initial, transition, accepting} start visited 
+      | start `elem` visited = visited
+      | otherwise = 
+        foldr (\char acc -> 
+          aux dfa (makeTransition transition rejectingSt char start) acc
+        ) (Set.insert start visited) alphabet
 
- 
+-- | Create the complement of a DFA ie flipping all states accept/reject
+complement :: DFA -> DFA
+complement dfa@Aut{uuid, initial, transition, accepting} = 
+  Aut uuid initial transition (Set.difference allStates accepting)
+  where 
+    alphabet = getAlphabet dfa
+    allStates = getReachableStates dfa 
+    -- | Incrementally build the new transition. Necessary because full graph
+    -- is possible theoretically
+    -- insert rejecting state first
+    transWithR = foldr (\st acc ->  -- Insert the "rejecting state" to ensure complete
+        foldr (\char acc -> 
+          case Map.lookup (st, char) transition of
+            Nothing -> Map.insert (st, char) rejectingSt acc
+            Just _ -> acc
+          ) acc alphabet
+      ) transition allStates -- | r all go to itself
+    -- from R, return R
+    rLoopTrans = 
+      foldr (\a acc -> Map.insert (rejectingSt, a) rejectingSt acc) 
+        transWithR alphabet
+
+-- | Intersect two DFAs
+intersect :: DFA -> DFA -> DFA
+intersect dfa1 dfa2 = 
+    Aut 0 (combineSt (initial dfa1) (initial dfa2)) combinedTrans
+    combinedAcceptStates
+  where 
+    alphabet = Set.union (getAlphabet dfa1) (getAlphabet dfa2)
+    reachable1 = getReachableStates dfa1
+    reachable2 = getReachableStates dfa2
+    combineSt st1 st2 = hashString $ st1 ++ "," ++ st2
+    combinedTrans = 
+      foldr (\u1 acc -> 
+        foldr (\u2 acc -> 
+            foldr (\char acc -> 
+              Data.Map.insert (combineSt u1 u2, char)
+                (combineSt 
+                  (makeTransition (transition dfa1) rejectingSt char u1) 
+                  (makeTransition (transition dfa2) rejectingSt char u2) 
+                ) acc
+              ) acc alphabet
+          ) acc reachable2
+        ) Data.Map.empty reachable1
+    combinedAcceptStates = foldr (\st acc ->
+      Set.union acc (Set.map (combineSt st) (accepting dfa2))
+      ) Set.empty (accepting dfa1)
+
+-- | Check if DFA language is empty 
+isDFAEmpty :: DFA -> Bool
+isDFAEmpty dfa@Aut{accepting} = not $ any (`elem` reachableStates) accepting
+  where reachableStates = getReachableStates dfa
+
+-- | Check whether one DFA's language is a subset of another
+isSubset :: DFA -> DFA -> Bool
+isSubset dfa1 dfa2 = isDFAEmpty $ intersect dfa1 (complement dfa2)
