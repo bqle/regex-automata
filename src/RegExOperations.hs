@@ -48,11 +48,9 @@ passthroughAccept nfa max str =
     else takeWhileAcc (NFA.accept nfa) "" str
 
 findFirst :: String -> String -> Bool -> Maybe String
-findFirst regex str max =
-  let nfa = regexToNFA regex
-   in case nfa of
-        Nothing -> Nothing
-        Just n -> runTailUntilJust (passthroughAccept n max) str
+findFirst regex str max = do
+  nfa <- regexToNFA regex
+  runTailUntilJust (passthroughAccept nfa max) str
 
 -- >>> findFirst "a*" "bbbbaaaaaaaasdas" True
 -- Just "aaaaaaaa"
@@ -70,24 +68,9 @@ replace :: String -> String -> String -> Maybe String
 replace regex str newStr = undefined
 
 subset :: String -> String -> Maybe Bool
-subset str1 str2 = 
-  let 
-    nfa1 = regexToNFA str1
-    nfa2 = regexToNFA str2 in
-      case (nfa1, nfa2) of
-        (Just n1, Just n2) -> Just $ convert n1 `isSubset` convert n2
-        (_, _) -> Nothing
+subset str1 str2 = do
+  nfa1 <- regexToNFA str1
+  nfa2 <- regexToNFA str2
+  Just $ convert nfa1 `isSubset` convert nfa2
+  
 
--- >>> subset "abc" "a"
--- Just True
-
-dfa1 = convert (Data.Maybe.fromJust (regexToNFA "abc"))
-dfa2 = convert (Data.Maybe.fromJust (regexToNFA "a|b"))
-dfaC = complement dfa2
-dfaI = dfa1 `intersect` dfaC
-reachable1 = toList $ getReachableStates dfa1
-reachable2 = toList $ getReachableStates dfaC
-alphabetL = "abc"
-
--- >>> (NFA.initial dfa1) `elem` reachable1
--- True
