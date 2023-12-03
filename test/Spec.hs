@@ -27,7 +27,7 @@ main = do
   putStrLn "--- Regex Parser Tests ---"
   QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
   QC.quickCheck (QC.forAll genRegExString prop_parseable_regex)
-  _ <- test_all_regex_parser
+  test_all_regex_parser
   return ()
 
 

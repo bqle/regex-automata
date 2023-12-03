@@ -2,7 +2,6 @@ module NFATest where
 
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import Data.List
-import Data.Map
 import Data.Maybe
 import NFA
 import qualified NFA
@@ -12,7 +11,6 @@ import Test.QuickCheck (quickCheckAll)
 import Test.QuickCheck as QC
 import Data.Map
 import Control.Monad (replicateM)
-import NFA (countTransitions)
 
 lowercaseChars = ['a'..'z']
 

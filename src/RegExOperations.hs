@@ -9,8 +9,8 @@ module RegexOperations
 where
 
 import Data.Maybe (isJust, fromJust)
-import NFA (NFA, accept)
-import DFA (convert, isSubset)
+import NFA 
+import DFA 
 import DFA 
 import RegexParser (regexToNFA)
 
