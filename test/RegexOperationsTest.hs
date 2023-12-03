@@ -7,7 +7,7 @@ import RegexOperations
     findFirstIndex,
     replace,
     splitBy,
-    subset, 
+    subset,
   )
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
@@ -16,8 +16,8 @@ import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 -- popStackUntil "abcdef" (== 'c') True ~?= ("ab", "def"),
 
 tFindFirst =
-  "match"
-    ~: TestList
+  "match" ~:
+    TestList
       [ findFirst "ab" "cccccabccccc" False ~?= Just "ab",
         findFirst "(ab)*" "cccccabccccc" False ~?= Just "ab",
         findFirst "ababab" "cccccabababccccc" False ~?= Just "ababab",
@@ -37,8 +37,8 @@ tFindFirst =
 -- Counts {cases = 13, tried = 13, errors = 0, failures = 0}
 
 tSplitBy =
-  "splitBy"
-    ~: TestList
+  "splitBy" ~:
+    TestList
       [ splitBy "," "a,b,c,d" ~?= Just ["a", "b", "c", "d"],
         splitBy "a" "aaba" ~?= Just ["", "", "b", ""],
         splitBy "a*" "aaba" ~?= Just ["", "b", ""],
@@ -49,8 +49,8 @@ tSplitBy =
       ]
 
 tFindFirstIndex =
-  "findFirstIndex"
-    ~: TestList
+  "findFirstIndex" ~:
+    TestList
       [ findFirstIndex "ab" "cccccabccccc" ~?= Just 5,
         findFirstIndex "(ab)*" "cccccabccccc" ~?= Just 5,
         findFirstIndex "ababab" "ccccabababccccc" ~?= Just 4,
@@ -65,8 +65,8 @@ tFindFirstIndex =
       ]
 
 tFindAll =
-  "findAll"
-    ~: TestList
+  "findAll" ~:
+    TestList
       [ findAll "a" "abcabc"
           ~?= Just
             ["a", "a"],
@@ -81,8 +81,8 @@ tFindAll =
       ]
 
 tReplace =
-  "replace"
-    ~: TestList
+  "replace" ~:
+    TestList
       [ replace "abc" "abcdef" "def" ~?= Just "defdef",
         replace "a" "bbb" "xyz" ~?= Just "bbb",
         replace "a*" "bbbaaaaccc" "d" ~?= Just "bbbdccc",
@@ -91,21 +91,22 @@ tReplace =
         replace "|" "asdasd" "asd" ~?= Nothing
       ]
 
-tSubset = 
-  "subset" 
-    ~: TestList
+tSubset =
+  "subset" ~:
+    TestList
       [ subset "abc" "abc" ~?= Just True,
-        subset "a" "a|b" ~?= Just True, 
-        subset "a|b" "a|b|c" ~?= Just True, 
-        subset "aaaa" "a*" ~?= Just True, 
-        subset "abc|abc" "abc" ~?= Just True, 
+        subset "a" "a|b" ~?= Just True,
+        subset "a|b" "a|b|c" ~?= Just True,
+        subset "aaaa" "a*" ~?= Just True,
+        subset "abc|abc" "abc" ~?= Just True,
         subset "abcc" "abc*" ~?= Just True,
         subset "abcabc" "(abc)*" ~?= Just True,
         subset "a*b*c" "a*a*b*c*" ~?= Just True,
-        subset "abcd" "abc" ~?= Just False, 
-        subset "a|d" "a|b|c" ~?= Just False, 
+        subset "abcd" "abc" ~?= Just False,
+        subset "a|d" "a|b|c" ~?= Just False,
         subset "b*" "a|b|c" ~?= Just False
       ]
+
 -- >>> test_all_regex_operations
 -- Counts {cases = 0, tried = 0, errors = 0, failures = 0}
 test_all_regex_operations :: IO Counts
