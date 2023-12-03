@@ -1,4 +1,9 @@
-module RegexParserTest where
+module RegexParserTest (
+  prop_rpn_correct_length,
+  prop_parseable_regex, 
+  test_all_regex_parser,
+  genRegExString,
+) where
 
 import Control.Monad qualified as Monad
 import Data.Maybe
@@ -7,6 +12,7 @@ import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import Test.QuickCheck qualified as QC
 
+tPopStackUntil :: Test
 tPopStackUntil =
   "popStackUntil"
     ~: TestList

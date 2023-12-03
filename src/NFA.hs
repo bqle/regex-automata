@@ -39,8 +39,7 @@ import Test.QuickCheck qualified as QC
 type State = String
 
 data Automaton transitionT acceptingT = Aut
-  { uuid :: Int,
-    initial :: State,
+  { initial :: State,
     transition :: transitionT,
     accepting :: acceptingT
   }
@@ -70,11 +69,8 @@ instance
   (Show transitionT, Show acceptingT) =>
   Show (Automaton transitionT acceptingT)
   where
-  show Aut {uuid, initial, transition, accepting} =
-    "{  uuid: "
-      ++ show uuid
-      ++ " ,\n"
-      ++ "   initial"
+  show Aut {initial, transition, accepting} =
+    "{ initial"
       ++ show initial
       ++ " ,\n"
       ++ "   transitions: "
@@ -90,8 +86,7 @@ epsilon = '\0'
 exampleNFA :: NFA
 exampleNFA =
   Aut
-    { uuid = 0,
-      initial = "0",
+    { initial = "0",
       transition = Data.Map.fromList [(("0", 'a'), Data.Set.fromList ["0"])],
       accepting = "0"
     }
@@ -99,8 +94,7 @@ exampleNFA =
 neverAcceptNFA :: NFA
 neverAcceptNFA =
   Aut
-    { uuid = 0,
-      initial = "0",
+    { initial = "0",
       transition = Data.Map.empty,
       accepting = "1"
     }
@@ -140,9 +134,9 @@ accept nfa@Aut {accepting} s =
   (accepting `elem`) $ run nfa s
 
 -- | Attach the uuid to every state, update transitions accordingly
-attachUUID :: NFA -> NFA
-attachUUID Aut {uuid, initial, transition, accepting} =
-  Aut uuid newInitial newTransitions newAccepting
+attachUUID :: NFA -> Int -> NFA
+attachUUID Aut {initial, transition, accepting} uuid =
+  Aut newInitial newTransitions newAccepting
   where
     hashWithUUID str = hashString (str ++ show uuid)
     newInitial = hashWithUUID initial
@@ -213,23 +207,23 @@ alphabet ls =
           (\acc v -> Data.Map.insert (initSt, v) (Set.singleton accSt) acc)
           Data.Map.empty
           ls
-   in Aut 0 initSt transitions accSt
+   in Aut initSt transitions accSt
 
 -- | Append 2 NFA (ab)
-append :: NFA -> NFA -> NFA
-append nfa1 nfa2 =
-  Aut 0 init1 newTransitions accept2
+append :: (NFA, Int) -> (NFA, Int) -> NFA
+append (nfa1, uuid1) (nfa2, uuid2) =
+  Aut init1 newTransitions accept2
   where
-    Aut uuid1 init1 trans1 accept1 = attachUUID nfa1
-    Aut uuid2 init2 trans2 accept2 = attachUUID nfa2
+    Aut init1 trans1 accept1 = attachUUID nfa1 uuid1
+    Aut init2 trans2 accept2 = attachUUID nfa2 uuid2
     newConnections = 
       bipartiteTransitions trans1 (Set.singleton accept1) (Set.singleton init2)
     newTransitions =
       unionTransitions newConnections (unionTransitions trans1 trans2)
 
 -- | Alternate 2 NFA (a + b) (basically OR)
-alternate :: NFA -> NFA -> NFA
-alternate nfa1 nfa2 =
+alternate :: (NFA, Int) -> (NFA, Int) -> NFA
+alternate (nfa1, uuid1) (nfa2, uuid2) =
   let newInitSt = "i"
       newAccSt = "e"
       newConnections =
@@ -245,30 +239,30 @@ alternate nfa1 nfa2 =
         unionTransitions
           newConnections
           (unionTransitions trans1 trans2)
-   in Aut 0 newInitSt newTransitions newAccSt
+   in Aut newInitSt newTransitions newAccSt
   where
-    Aut uuid1 init1 trans1 accept1 = attachUUID nfa1
-    Aut uuid2 init2 trans2 accept2 = attachUUID nfa2
+    Aut init1 trans1 accept1 = attachUUID nfa1 uuid1
+    Aut init2 trans2 accept2 = attachUUID nfa2 uuid2
 
 -- | kleene-star (a*)
-kleene :: NFA -> NFA
-kleene nfa =
+kleene :: (NFA, Int) -> NFA
+kleene (nfa, uuid) =
   let newInitSt = "i"
       newAccSt = "e"
-      Aut _ init trans accept = attachUUID nfa
+      Aut init trans accept = attachUUID nfa uuid
       newTransitions =
         unionTransitions
           (bipartiteTransitions Data.Map.empty (Set.singleton newInitSt) 
             (Set.fromList [newAccSt, init]))
           (bipartiteTransitions trans (Set.singleton accept) 
             (Set.fromList [newAccSt, init]))
-   in Aut 0 newInitSt (unionTransitions newTransitions trans) newAccSt
+   in Aut newInitSt (unionTransitions newTransitions trans) newAccSt
 
 -- TESTING -- 
 -- | Helper for find accpting string given nfa, starting state, and visited 
 -- states
 findAcceptingStringAux :: NFA -> State -> Set State -> Maybe String
-findAcceptingStringAux nfa@Aut{uuid, initial, transition, accepting} start 
+findAcceptingStringAux nfa@Aut{initial, transition, accepting} start 
   visited 
   | start == accepting = Just "" 
   | otherwise = 

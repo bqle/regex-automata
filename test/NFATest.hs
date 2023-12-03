@@ -28,7 +28,7 @@ tAlphabetNFA =
   ]
 
 kleeneNFA :: NFA
-kleeneNFA = kleene alphabetNFA
+kleeneNFA = kleene (alphabetNFA, 0)
 
 tKleeneNFA = 
   "kleeneNFA" ~: TestList [
@@ -40,7 +40,7 @@ tKleeneNFA =
   ]
 
 appendNFA :: NFA 
-appendNFA = append alphabetNFA alphabetNFA{uuid=1}
+appendNFA = append (alphabetNFA, 0) (alphabetNFA, 1)
 
 tAppendNFA = 
   "appendNFA" ~: TestList [
@@ -50,7 +50,7 @@ tAppendNFA =
   ]
 
 alternateNFA :: NFA
-alternateNFA = alternate alphabetNFA{uuid=2} appendNFA{uuid=3}
+alternateNFA = alternate (alphabetNFA, 2) (appendNFA, 3)
 
 tAlternateNFA = 
   "alternateNFA" ~: TestList [
@@ -98,14 +98,14 @@ instance Arbitrary NFA where
         newEdges = Prelude.map (init, c,) fromI ++ Prelude.map (,c , end) toE
           ++ edges
         newTrans = Prelude.foldl insertConnection Data.Map.empty newEdges in
-        return $ Aut {uuid=0, initial=init, transition=newTrans, accepting=end}
+        return $ Aut init newTrans end
       where 
         init = "i"
         end = "e"
   shrink :: NFA -> [NFA]
-  shrink nfa@Aut{uuid, initial, transition, accepting}= 
+  shrink nfa@Aut{initial, transition, accepting}= 
     let smallerTrans = shrink transition in 
-      Prelude.map (\newTrans -> Aut uuid initial newTrans accepting) 
+      Prelude.map (\newTrans -> Aut initial newTrans accepting) 
         smallerTrans
 
 prop_bipartiteTrans :: [String] -> [String] -> Bool
@@ -126,7 +126,7 @@ prop_alternateStillAccepts n1 n2 =
     a1 = findAcceptingString n1 in
   isJust a1 ==> 
   let s = fromJust a1 in 
-    accept (alternate n1{uuid=1} n2{uuid=2}) s
+    accept (alternate (n1,1) (n2, 2)) s
 
 prop_appendStillAccepts :: NFA -> NFA -> Property
 prop_appendStillAccepts n1 n2 = 
@@ -137,7 +137,7 @@ prop_appendStillAccepts n1 n2 =
   let 
     s1 = fromJust a1 
     s2 = fromJust a2 in 
-      accept (append n1{uuid=1} n2{uuid=2}) (s1 ++ s2)
+      accept (append (n1, 1) (n2, 2)) (s1 ++ s2)
 
 prop_kleeneStillAccepts:: NFA -> Int -> Property
 prop_kleeneStillAccepts n1 k = 
@@ -146,11 +146,11 @@ prop_kleeneStillAccepts n1 k =
   isJust a1 ==> 
   let 
     s1 = fromJust a1 in
-      accept (kleene n1) (concat $ replicate k s1)
+      accept (kleene (n1, 0)) (concat $ replicate k s1)
 
 -- | IO 
-main :: IO ()
-main = do 
+mainTest :: IO ()
+mainTest = do 
   _ <- QC.quickCheck prop_bipartiteTrans
   _ <- QC.quickCheck prop_alternateStillAccepts
   _ <- QC.quickCheck prop_appendStillAccepts

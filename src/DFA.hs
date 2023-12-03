@@ -27,7 +27,7 @@ rejectingSt = "r"
 
 -- | Run a DFA & get the final state
 run :: DFA -> [Char] -> State
-run Aut {uuid, initial, transition, accepting} = 
+run Aut {initial, transition, accepting} = 
   Prelude.foldl (flip (makeTransition transition rejectingSt)) initial
 
 accept :: DFA -> [Char] -> Bool
@@ -35,8 +35,8 @@ accept dfa@Aut {accepting} s = DFA.run dfa s `elem` accepting
 
 -- | Convert NFA to DFA
 convert :: NFA -> DFA
-convert nfa@Aut{uuid, initial, transition, accepting} = 
-  Aut 0 initialDfa newTransition acceptedSt
+convert nfa@Aut{initial, transition, accepting} = 
+  Aut initialDfa newTransition acceptedSt
   where 
     alphabet = getAlphabet nfa
     flatten :: Set State -> State
@@ -88,8 +88,8 @@ getReachableStates dfa@Aut {initial} =
 
 -- | Create the complement of a DFA ie flipping all states accept/reject
 complement :: DFA -> DFA
-complement dfa@Aut{uuid, initial, transition, accepting} = 
-  Aut uuid initial transition (Set.difference allStates accepting)
+complement dfa@Aut{initial, transition, accepting} = 
+  Aut initial transition (Set.difference allStates accepting)
   where 
     alphabet = getAlphabet dfa
     allStates = getReachableStates dfa 
@@ -111,7 +111,7 @@ complement dfa@Aut{uuid, initial, transition, accepting} =
 -- | Intersect two DFAs
 intersect :: DFA -> DFA -> DFA
 intersect dfa1 dfa2 = 
-    Aut 0 (combineSt (initial dfa1) (initial dfa2)) combinedTrans
+    Aut (combineSt (initial dfa1) (initial dfa2)) combinedTrans
     combinedAcceptStates
   where 
     alphabet = Set.union (getAlphabet dfa1) (getAlphabet dfa2)
