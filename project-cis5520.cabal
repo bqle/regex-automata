@@ -50,9 +50,14 @@ library
       DFA,
       RandomString,
       RegexOperations,
-      RegexParser
+      RegexParser,
+      DFATest,
+      NFATest,
+      RegexOperationsTest,
+      RegexParserTest
   hs-source-dirs:
       src
+      test
 
 executable project-cis5520-exe
   import:

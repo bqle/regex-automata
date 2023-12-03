@@ -7,6 +7,7 @@ import RegexOperations
     findFirstIndex,
     replace,
     splitBy,
+    subset, 
   )
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
@@ -90,6 +91,21 @@ tReplace =
         replace "|" "asdasd" "asd" ~?= Nothing
       ]
 
+tSubset = 
+  "subset" 
+    ~: TestList
+      [ subset "abc" "abc" ~?= Just True,
+        subset "a" "a|b" ~?= Just True, 
+        subset "a|b" "a|b|c" ~?= Just True, 
+        subset "aaaa" "a*" ~?= Just True, 
+        subset "abc|abc" "abc" ~?= Just True, 
+        subset "abcc" "abc*" ~?= Just True,
+        subset "abcabc" "(abc)*" ~?= Just True,
+        subset "a*b*c" "a*a*b*c*" ~?= Just True,
+        subset "abcd" "abc" ~?= Just False, 
+        subset "a|d" "a|b|c" ~?= Just False, 
+        subset "b*" "a|b|c" ~?= Just False
+      ]
 -- >>> test_all_regex_operations
 -- Counts {cases = 0, tried = 0, errors = 0, failures = 0}
 test_all_regex_operations :: IO Counts
@@ -100,5 +116,6 @@ test_all_regex_operations =
         tFindFirst,
         tFindFirstIndex,
         tFindAll,
-        tReplace
+        tReplace,
+        tSubset
       ]

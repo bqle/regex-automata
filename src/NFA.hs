@@ -1,40 +1,70 @@
-module NFA where
+module NFA (
+  NFA,
+  alphabet, 
+  append,
+  kleene,
+  run,
+  accept,
+  alternate,
+  findAcceptingString,
+  neverAcceptNFA,
+  makeTransition,
+  exploreEpsilons,
+  findNextStates,
+  getAlphabet,
+  countTransitions,
+  insertConnection,
+  bipartiteTransitions,
+  Transition,
+  State,
+  Automaton (..),
+) where
 
 import Control.Monad.Identity (Identity (..))
 import Crypto.Hash (hashWith)
 import Data.Foldable (foldlM)
 import Data.List (nub)
 import Data.List qualified as List
-import Data.Map (Map, empty, foldrWithKey, fromList, insert, lookup, union)
-import Data.Set (Set, insert, empty, toList, member, insert, fromList)
-import Data.Maybe (fromMaybe, isJust)
-import RandomString (hashString, randomUUID)
+import Data.Map (Map, empty, foldrWithKey, fromList, insert, lookup, union,
+  findWithDefault)
+import Data.Set (Set, insert, empty, toList, member, insert, fromList, fold, union)
+import Data.Set qualified as Set
+import Data.Maybe (isJust)
+import RandomString (hashString)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import Test.QuickCheck qualified as QC
 
 -- { GENERAL AUTOMATON TYPES }
 
+type State = String
+
 data Automaton transitionT acceptingT = Aut
   { uuid :: Int,
-    initial :: String,
+    initial :: State,
     transition :: transitionT,
     accepting :: acceptingT
   }
 
 -- | (current state, new char) -> new states
-type Transition v = Map (String, Char) v
+type Transition v = Map (State, Char) v
 
-makeTransition :: Transition v -> v -> Char -> String -> v
+-- | Get all the characters that have a transition 
+getAlphabet :: Ord a => Automaton (Transition a) b -> Set Char
+getAlphabet nfa@Aut{transition} = 
+  foldrWithKey 
+  (\(_, char) _ -> Data.Set.insert char) Data.Set.empty transition
+
+makeTransition :: Transition v -> v -> Char -> State -> v
 makeTransition trans def char st =
-  fromMaybe def (Data.Map.lookup (st, char) trans)
+  Data.Map.findWithDefault def (st, char) trans
 
 -- { NFA SPECIALIZATIONS }
-type NFATransition = Transition [String]
+type NFATransition = Transition (Set State)
 
 -- | Finite NFA with state `s`, alphabet `a` and a monadic context `m`.
 --   The type parameters `s` and `a` are assumed to represent finite set
 --  Assumptions: 1 initial state, 1 accepting state
-type NFA = Automaton NFATransition String
+type NFA = Automaton NFATransition State
 
 instance
   (Show transitionT, Show acceptingT) =>
@@ -62,7 +92,7 @@ exampleNFA =
   Aut
     { uuid = 0,
       initial = "0",
-      transition = Data.Map.fromList [(("0", 'a'), ["0"])],
+      transition = Data.Map.fromList [(("0", 'a'), Data.Set.fromList ["0"])],
       accepting = "0"
     }
 
@@ -76,29 +106,34 @@ neverAcceptNFA =
     }
 
 -- | Find all transitions after taking the char
-findNextStates :: NFATransition -> [String] -> Char -> [String]
+findNextStates :: NFATransition -> Set State -> Char -> Set State
 findNextStates transition starting a =
-  nub $
     exploreEpsilons
       transition
-      (nub $ concatMap (makeTransition transition [] a) starting)
+      (Set.fold (\v acc -> Set.union acc 
+        (makeTransition transition Data.Set.empty a v)) Data.Set.empty starting) 
 
 -- | Expand the states to include all reachable states thru epsilon transitions
-exploreEpsilons :: NFATransition -> [String] -> [String]
+exploreEpsilons :: NFATransition -> Set State -> Set State
 exploreEpsilons transition states =
-  let immediateFrontier =
-        nub $
-          concatMap
-            (makeTransition transition [] epsilon)
-            states
-   in case immediateFrontier of
-        [] -> states
-        _ -> exploreEpsilons transition immediateFrontier ++ states
+  let 
+    immediateFrontier = Set.fold (\v acc -> Set.union acc 
+        (makeTransition transition Data.Set.empty epsilon v)
+      ) Set.empty states 
+        -- nub $
+        --   concatMap
+        --     (makeTransition transition [] epsilon)
+        --     states
+    in if immediateFrontier == Data.Set.empty then states
+      else Data.Set.union (exploreEpsilons transition immediateFrontier) states
+    -- case immediateFrontier of
+    --     Data.Set.empty -> states
+    --     _ -> Data.Set.union (exploreEpsilons transition immediateFrontier) states
 
 -- | Run an NFA & get the final states
-run :: NFA -> [Char] -> [String]
+run :: NFA -> [Char] -> Set State
 run Aut {initial, transition, accepting} =
-  foldl (findNextStates transition) (exploreEpsilons transition [initial])
+  List.foldl (findNextStates transition) (exploreEpsilons transition (Set.singleton initial))
 
 accept :: NFA -> [Char] -> Bool
 accept nfa@Aut {accepting} s =
@@ -117,7 +152,7 @@ attachUUID Aut {uuid, initial, transition, accepting} =
         ( \(state, char) val ->
             Data.Map.insert
               (hashWithUUID state, char)
-              (List.map hashWithUUID val)
+              (Set.map hashWithUUID val)
         )
         Data.Map.empty
         transition
@@ -129,42 +164,37 @@ unionTransitions t1 t2 =
     ( \(state, char) dest acc ->
         Data.Map.insert
           (state, char)
-          ( nub (fromMaybe [] (Data.Map.lookup (state, char) acc) ++ dest)
-          )
+          (Set.union dest (
+            Data.Map.findWithDefault Set.empty (state,char) acc
+          ))
           acc
     )
     t2
     t1
 
 -- | Insert new connection into NFA 
-insertConnection :: NFATransition -> (String, Char, String) -> NFATransition
+insertConnection :: NFATransition -> (State, Char, State) -> NFATransition
 insertConnection trans (u, c, v) = 
   case Data.Map.lookup (u, c) trans of
-    Nothing -> Data.Map.insert (u, c) [v] trans
-    Just arr -> Data.Map.insert (u, c) ([v |v `notElem` arr] ++ arr) trans
+    Nothing -> Data.Map.insert (u, c) (Set.singleton v) trans
+    Just arr -> Data.Map.insert (u, c) 
+      (Set.union (if v `elem` arr then Set.empty else Set.singleton v) arr)
+      trans
 
 -- | Create fully bipartite graph from two lists of vertices
 --   We need original transitions because accepting states may already have
 --   e-transitions
-bipartiteTransitions :: NFATransition -> [String] -> [String] -> NFATransition
+bipartiteTransitions :: NFATransition -> Set State -> Set State -> NFATransition
 bipartiteTransitions transOrig s1 s2 =
-  let 
-    newS1 = nub s1
-    newS2 = nub s2 in
   foldl ( \acc uS -> 
       Data.Map.insert (uS, epsilon) 
-      ( nub 
-        (fromMaybe [] (Data.Map.lookup (uS, epsilon) acc) ++ newS2)
+      (Set.union s2
+        (makeTransition acc Set.empty epsilon uS )
       )
       acc
     )
     Data.Map.empty
-    newS1
-
--- | Get all the characters that have a transition in DFA
-getAlphabet :: NFA -> [Char]
-getAlphabet nfa@Aut{transition} = 
-  Data.Set.toList $ foldrWithKey (\(_, char) _ -> Data.Set.insert char) Data.Set.empty transition
+    s1
 
 -- | Count number of transitions from an NFATransition
 countTransitions :: NFATransition -> Int
@@ -180,7 +210,7 @@ alphabet ls =
       accSt = "e"
       transitions =
         foldl
-          (\acc v -> Data.Map.insert (initSt, v) [accSt] acc)
+          (\acc v -> Data.Map.insert (initSt, v) (Set.singleton accSt) acc)
           Data.Map.empty
           ls
    in Aut 0 initSt transitions accSt
@@ -192,7 +222,8 @@ append nfa1 nfa2 =
   where
     Aut uuid1 init1 trans1 accept1 = attachUUID nfa1
     Aut uuid2 init2 trans2 accept2 = attachUUID nfa2
-    newConnections = bipartiteTransitions trans1 [accept1] [init2]
+    newConnections = 
+      bipartiteTransitions trans1 (Set.singleton accept1) (Set.singleton init2)
     newTransitions =
       unionTransitions newConnections (unionTransitions trans1 trans2)
 
@@ -203,11 +234,12 @@ alternate nfa1 nfa2 =
       newAccSt = "e"
       newConnections =
         unionTransitions
-          (bipartiteTransitions Data.Map.empty [newInitSt] [init1, init2])
+          (bipartiteTransitions Data.Map.empty (Set.singleton newInitSt) 
+            (Set.fromList [init1, init2]))
           ( bipartiteTransitions
               (Data.Map.union trans1 trans2)
-              [accept1, accept2]
-              [newAccSt]
+              (Set.fromList [accept1, accept2])
+              (Set.singleton newAccSt)
           )
       newTransitions =
         unionTransitions
@@ -226,15 +258,17 @@ kleene nfa =
       Aut _ init trans accept = attachUUID nfa
       newTransitions =
         unionTransitions
-          (bipartiteTransitions Data.Map.empty [newInitSt] [newAccSt, init])
-          (bipartiteTransitions trans [accept] [newAccSt, init])
+          (bipartiteTransitions Data.Map.empty (Set.singleton newInitSt) 
+            (Set.fromList [newAccSt, init]))
+          (bipartiteTransitions trans (Set.singleton accept) 
+            (Set.fromList [newAccSt, init]))
    in Aut 0 newInitSt (unionTransitions newTransitions trans) newAccSt
 
 -- TESTING -- 
 -- | Helper for find accpting string given nfa, starting state, and visited 
 -- states
-findAcceptingStringH :: NFA -> String -> [String] -> Maybe String
-findAcceptingStringH nfa@Aut{uuid, initial, transition, accepting} start 
+findAcceptingStringAux :: NFA -> State -> Set State -> Maybe String
+findAcceptingStringAux nfa@Aut{uuid, initial, transition, accepting} start 
   visited 
   | start == accepting = Just "" 
   | otherwise = 
@@ -251,11 +285,12 @@ findAcceptingStringH nfa@Aut{uuid, initial, transition, accepting} start
               do 
                 v <- foldl 
                   (\acc next -> if isJust acc then acc 
-                    else findAcceptingStringH nfa next (start : visited)) Nothing nexts
+                    else findAcceptingStringAux nfa next (Set.insert start visited)) 
+                      Nothing nexts
                 return (char : v)
         ) Nothing alphabet 
 
 -- | Find an example of an accepted string
 findAcceptingString :: NFA -> Maybe String
 findAcceptingString nfa = 
-  findAcceptingStringH nfa (initial nfa) []
+  findAcceptingStringAux nfa (initial nfa) Set.empty

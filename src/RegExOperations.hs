@@ -4,12 +4,21 @@ module RegexOperations
     findAll,
     splitBy,
     replace,
+    subset,
   )
 where
 
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromJust)
 import NFA (NFA, accept)
+import DFA (convert, isSubset)
+import DFA 
 import RegexParser (regexToNFA)
+
+import Data.Set qualified as Set
+import Data.Set
+import Data.List qualified as List
+import NFA 
+import RandomString
 
 takeWhileAcc :: ([a] -> Bool) -> [a] -> [a] -> Maybe [a]
 takeWhileAcc f acc [] = if f acc then Just acc else Nothing
@@ -35,15 +44,13 @@ runTailUntilJust f [] = if isJust (f []) then Just [] else Nothing
 passthroughAccept :: NFA -> Bool -> String -> Maybe String
 passthroughAccept nfa max str =
   if max
-    then takeWhileAccMax (accept nfa) "" str False
-    else takeWhileAcc (accept nfa) "" str
+    then takeWhileAccMax (NFA.accept nfa) "" str False
+    else takeWhileAcc (NFA.accept nfa) "" str
 
 findFirst :: String -> String -> Bool -> Maybe String
-findFirst regex str max =
-  let nfa = regexToNFA regex
-   in case nfa of
-        Nothing -> Nothing
-        Just n -> runTailUntilJust (passthroughAccept n max) str
+findFirst regex str max = do
+  nfa <- regexToNFA regex
+  runTailUntilJust (passthroughAccept nfa max) str
 
 -- >>> findFirst "a*" "bbbbaaaaaaaasdas" True
 -- Just "aaaaaaaa"
@@ -59,3 +66,9 @@ findAll regex str = undefined
 
 replace :: String -> String -> String -> Maybe String
 replace regex str newStr = undefined
+
+subset :: String -> String -> Maybe Bool
+subset str1 str2 = do
+  nfa1 <- regexToNFA str1
+  nfa2 <- regexToNFA str2
+  return $ convert nfa1 `isSubset` convert nfa2

@@ -1,14 +1,16 @@
 module DFATest where
 
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
-import DFA 
-import NFA (transition, NFA, makeTransition, findNextStates)
+import DFA (DFA, accept, convert)
+import qualified DFA
+import NFA (NFA)
 import qualified NFA
 import NFATest
+import qualified NFATest
 import Test.QuickCheck as QC
 
 alphabetDFA :: DFA
-alphabetDFA = convert alphabetNFA
+alphabetDFA = DFA.convert alphabetNFA
 
 tAlphabetDFA = 
   "AlphabetDFA" ~: TestList [
@@ -23,30 +25,30 @@ kleeneDFA = convert kleeneNFA
 
 tKleeneDFA = 
   "kleeneNFA" ~: TestList [
-    accept kleeneDFA "a" ~?= True,
-    accept kleeneDFA "" ~?= True,
-    accept kleeneDFA "b" ~?= True,
-    accept kleeneDFA "aa" ~?= True,
-    accept kleeneDFA "aabb" ~?= True
+    DFA.accept kleeneDFA "a" ~?= True,
+    DFA.accept kleeneDFA "" ~?= True,
+    DFA.accept kleeneDFA "b" ~?= True,
+    DFA.accept kleeneDFA "aa" ~?= True,
+    DFA.accept kleeneDFA "aabb" ~?= True
   ]
 
 appendDFA = convert appendNFA
 
 tAppendDFA = 
   "appendDFA" ~: TestList [
-    accept appendDFA "a" ~?= False,
-    accept appendDFA "" ~?= False,
-    accept appendDFA "ba" ~?= True
+    DFA.accept appendDFA "a" ~?= False,
+    DFA.accept appendDFA "" ~?= False,
+    DFA.accept appendDFA "ba" ~?= True
   ]
 
 alternateDFA = convert alternateNFA
 
 tAlternateDFA = 
   "alternateDFA" ~: TestList [
-    accept alternateDFA "a" ~?= True,
-    accept alternateDFA "ab" ~?= True,
-    accept alternateDFA "abc" ~?= False,
-    accept alternateDFA "" ~?= False
+    DFA.accept alternateDFA "a" ~?= True,
+    DFA.accept alternateDFA "ab" ~?= True,
+    DFA.accept alternateDFA "abc" ~?= False,
+    DFA.accept alternateDFA "" ~?= False
   ]
 
 test_all_dfa = runTestTT $ TestList [tAlphabetDFA, tAlternateDFA, tAppendDFA, tKleeneDFA]
@@ -59,3 +61,4 @@ test_all_dfa = runTestTT $ TestList [tAlphabetDFA, tAlternateDFA, tAppendDFA, tK
 -- For any string, DFA accepts iff NFA accepts
 prop_DFAiffNFA :: NFA -> String -> Bool
 prop_DFAiffNFA nfa str = NFA.accept nfa str == DFA.accept (convert nfa) str
+
