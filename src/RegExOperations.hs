@@ -9,14 +9,12 @@ module RegexOperations
 where
 
 import Data.Maybe (isJust, fromJust)
-import NFA (NFA, accept)
-import DFA (convert, isSubset)
-import DFA 
 import RegexParser (regexToNFA)
 
 import Data.Set qualified as Set
 import Data.Set
 import Data.List qualified as List
+import DFA 
 import NFA 
 import RandomString
 

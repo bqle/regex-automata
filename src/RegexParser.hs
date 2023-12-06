@@ -2,7 +2,7 @@ module RegexParser (regexToRPN, injectConcatSymbol, popStackUntil, regexToNFA) w
 
 import Data.Bifunctor
 import Data.Char (isAlpha)
-import NFA (NFA, accept, alphabet, alternate, append, kleene, neverAcceptNFA, uuid)
+import NFA (NFA, accept, alphabet, alternate, append, kleene, neverAcceptNFA)
 
 frst :: (a, b, c) -> a
 frst (a, _, _) = a
@@ -147,21 +147,21 @@ rpnToNFA rpn =
       | c `elem` operators = case c of
           '*' ->
             ( takeForUnary stack
-                >>= (\x -> Just (kleene (fst x) {uuid = count} : snd x)),
+                >>= (\x -> Just (kleene (fst x, count) : snd x)),
               count + 1
             )
           '|' ->
             ( takeForBinary stack
-                >>= (\x -> Just (alternate (frst x) (scnd x) {uuid = count} : thrd x)),
-              count + 1
+                >>= (\x -> Just (alternate (frst x, count) (scnd x, count+1) : thrd x)),
+              count + 2
             )
           '@' ->
             ( takeForBinary stack
-                >>= (\x -> Just (append (frst x) (scnd x) {uuid = count} : thrd x)),
-              count + 1
+                >>= (\x -> Just (append (frst x, count) (scnd x, count+1) : thrd x)),
+              count + 2
             )
           _ -> (Nothing, count)
-      | otherwise = (Just ((alphabet [c]) {uuid = count} : stack), count + 1)
+      | otherwise = (Just (alphabet [c] : stack), count + 1)
 
 regexToNFA :: String -> Maybe NFA
 regexToNFA regex = rpnToNFA (regexToRPN regex)
