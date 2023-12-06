@@ -62,7 +62,7 @@ test_all_nfa :: IO Counts
 test_all_nfa = runTestTT $ TestList [tAlternateNFA, tKleeneNFA, tAlphabetNFA, tAppendNFA]
 
 -- >>> test_all_nfa
--- Variable not in scope: test_all
+-- Counts {cases = 16, tried = 16, errors = 0, failures = 0}
 
 -- QUICKCHECK -- 
 
@@ -163,3 +163,4 @@ mainTest = do
         print nfa
         print (accept nfa str)
   
+

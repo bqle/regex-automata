@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import RegexOperations
 
 main :: IO ()
-main = putStrLn someFunc
+main = putStrLn "Regex engine"

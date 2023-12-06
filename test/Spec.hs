@@ -30,5 +30,4 @@ main = do
   test_all_regex_parser
   return ()
 
-
-
+-- >>> main
