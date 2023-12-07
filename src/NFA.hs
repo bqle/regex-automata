@@ -39,6 +39,7 @@ type NFATransition = Transition (Set State)
 type NFA = Automaton NFATransition State
 
 -- | Represents the epsilon transitions in NFAs
+epsilon :: Char
 epsilon = '\0'
 
 exampleNFA :: NFA
@@ -104,7 +105,6 @@ attachUUID Aut {initial, transition, accepting} uuid =
         transition
 
 instance MutableTrans NFATransition where
-  -- | Union two transitions
   unionTransitions :: NFATransition -> NFATransition -> NFATransition
   unionTransitions=
     foldrWithKey
@@ -117,12 +117,10 @@ instance MutableTrans NFATransition where
             acc
       )
 
-  -- | Count number of transitions from an NFATransition
   countTransitions :: NFATransition -> Int
   countTransitions =
     Map.foldrWithKey (\_ vs acc -> acc + length vs) 0 
 
-  -- | Insert new connection into NFA 
   insertTransition :: NFATransition -> (State, Char, State) -> NFATransition
   insertTransition trans (u, c, v) = 
     case Map.lookup (u, c) trans of

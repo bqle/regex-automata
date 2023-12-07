@@ -9,6 +9,7 @@ module DFA
 where
 
 import NFA 
+import Automaton
 import Data.Set (Set, insert, empty, toList, member, insert, fromList, singleton)
 import Data.Set qualified as Set
 import Data.Map (Map, fromList, foldrWithKey, empty, insert)
@@ -20,6 +21,23 @@ import RandomString (hashString)
 type DFATransition = Transition State
 
 type DFA = Automaton DFATransition (Set State)
+
+instance MutableTrans DFATransition where
+  unionTransitions :: DFATransition -> DFATransition -> DFATransition
+  unionTransitions t1 = 
+    foldrWithKey ( \(state, char) dest acc ->
+          case Map.lookup (state, char) t1 of
+            Nothing -> Map.insert (state, char) dest acc
+            Just _ -> acc
+    ) t1 
+
+  countTransitions :: DFATransition -> Int
+  countTransitions = 
+    Map.foldrWithKey (\_ _ acc -> acc + 1) 0
+
+  insertTransition :: DFATransition -> (State, Char, State) -> DFATransition
+  insertTransition trans (u, c, v) = 
+    Map.insert (u, c) v trans
 
 -- | A rejecting state for all DFAs. Will be forever dead once reach this state
 rejectingSt :: State
