@@ -2,7 +2,6 @@ import Test.HUnit
 import Test.QuickCheck
 import Test.QuickCheck qualified as QC
 
-import Lib
 import DFATest
 import NFATest
 import RegexOperationsTest

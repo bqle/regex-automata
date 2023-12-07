@@ -38,9 +38,12 @@ convert :: NFA -> DFA
 convert nfa@Aut{initial, transition, accepting} = 
   Aut initialDfa newTransition acceptedSt
   where 
+    alphabet :: Set Char
     alphabet = getAlphabet nfa
+    -- | Group a set of states into a single state
     flatten :: Set State -> State
     flatten nfaStates = hashString $ show (sort (Set.toList nfaStates))
+    -- | Recursive DFA to explore all transitions in the DFA
     exploreAllTransitions :: (DFATransition, Set State, Set State) 
       -> Set String -> (DFATransition, Set State, Set State)
     exploreAllTransitions acc currentStates =
@@ -63,14 +66,14 @@ convert nfa@Aut{initial, transition, accepting} =
           in
           exploreAllTransitions (newTrans, newVisited, newAcceptedSt) nextStates
         ) acc alphabet
-    initialStates = exploreEpsilons transition (Set.singleton initial)
-    initialDfa = flatten initialStates
-    (newTransition, v, acceptedSt) = exploreAllTransitions (Map.empty, 
+    initialState = exploreEpsilons transition (Set.singleton initial)
+    initialDfa = flatten initialState
+    (newTransition, _, acceptedSt) = exploreAllTransitions (Map.empty, 
       Data.Set.fromList [initialDfa], 
-      if accepting `elem` initialStates then singleton initialDfa else 
+      if accepting `elem` initialState then singleton initialDfa else 
         Set.empty
         )
-       initialStates
+       initialState
 
 -- | Get set of all reachable states
 getReachableStates :: DFA -> Set State 
@@ -78,7 +81,7 @@ getReachableStates dfa@Aut {initial} =
   Set.insert rejectingSt (aux dfa initial Set.empty)
   where 
     alphabet = getAlphabet dfa
-    aux dfa@Aut{initial, transition} start visited 
+    aux dfa@Aut{transition} start visited 
       | start `elem` visited = visited
       | otherwise = 
         foldr (\char acc -> 
@@ -104,17 +107,15 @@ intersect dfa1 dfa2 =
     reachable2 = getReachableStates dfa2
     combineSt st1 st2 = hashString $ st1 ++ "," ++ st2
     combinedTrans = 
-      foldr (\u1 acc -> 
-        foldr (\u2 acc -> 
-            foldr (\char acc -> 
-              Data.Map.insert (combineSt u1 u2, char)
-                (combineSt 
-                  (makeTransition (transition dfa1) rejectingSt char u1) 
-                  (makeTransition (transition dfa2) rejectingSt char u2) 
-                ) acc
-              ) acc alphabet
-          ) acc reachable2
-        ) Data.Map.empty reachable1
+      foldr (\(u1, u2, char) acc -> 
+        Data.Map.insert (combineSt u1 u2, char) 
+          (combineSt 
+            (makeTransition (transition dfa1) rejectingSt char u1) 
+            (makeTransition (transition dfa2) rejectingSt char u2) 
+          ) acc
+        ) Data.Map.empty [(u1, u2, char) | u1 <- toList reachable1,
+                                    u2 <- toList reachable2, 
+                                    char <- toList alphabet]
     combinedAcceptStates = foldr (\st acc ->
       Set.union acc (Set.map (combineSt st) (accepting dfa2))
       ) Set.empty (accepting dfa1)
