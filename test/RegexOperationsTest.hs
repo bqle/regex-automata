@@ -115,6 +115,7 @@ tSubset =
       ]
 
 -- >>> test_all_regex_operations
+-- Counts {cases = 54, tried = 54, errors = 0, failures = 0}
 test_all_regex_operations :: IO Counts
 test_all_regex_operations =
   runTestTT $
