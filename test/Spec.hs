@@ -26,6 +26,10 @@ main = do
   QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
   QC.quickCheck (QC.forAll genRegExString prop_parseable_regex)
   test_all_regex_parser
+
+  putStrLn ""
+  putStrLn "--- Regex Operations Tests ---"
+  test_all_regex_operations
   return ()
 
 -- >>> main

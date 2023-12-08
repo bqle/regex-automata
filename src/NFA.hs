@@ -13,7 +13,7 @@ module NFA (
   findNextStates,
   getAlphabet,
   countTransitions,
-  insertConnection,
+  insertTransition,
   bipartiteTransitions,
   Transition,
   State,
@@ -27,31 +27,8 @@ import Data.Map qualified as Map
 import Data.Set (Set, insert, empty, toList, member, insert, fromList, fold, union)
 import Data.Set qualified as Set
 import Data.Maybe (isJust)
+import Automaton
 import RandomString (hashString)
-
--- { GENERAL AUTOMATON TYPES }
-
-type State = String
-type UUID = Int
-
-data Automaton transitionT acceptingT = Aut
-  { initial :: State,
-    transition :: transitionT,
-    accepting :: acceptingT
-  }
-
--- | (current state, new char) -> new states
-type Transition v = Map (State, Char) v
-
--- | Get all the characters that have a transition 
-getAlphabet :: Ord a => Automaton (Transition a) b -> Set Char
-getAlphabet nfa@Aut{transition} = 
-  foldrWithKey 
-  (\(_, char) _ -> Data.Set.insert char) Data.Set.empty transition
-
-makeTransition :: Transition v -> v -> Char -> State -> v
-makeTransition trans def char st =
-  Map.findWithDefault def (st, char) trans
 
 -- { NFA SPECIALIZATIONS }
 type NFATransition = Transition (Set State)
@@ -61,22 +38,8 @@ type NFATransition = Transition (Set State)
 --  Assumptions: 1 initial state, 1 accepting state
 type NFA = Automaton NFATransition State
 
-instance
-  (Show transitionT, Show acceptingT) =>
-  Show (Automaton transitionT acceptingT)
-  where
-  show Aut {initial, transition, accepting} =
-    "{ initial"
-      ++ show initial
-      ++ " ,\n"
-      ++ "   transitions: "
-      ++ show transition
-      ++ " ,\n"
-      ++ "   accepting:"
-      ++ show accepting
-      ++ "\n }"
-
 -- | Represents the epsilon transitions in NFAs
+epsilon :: Char
 epsilon = '\0'
 
 exampleNFA :: NFA
@@ -141,29 +104,30 @@ attachUUID Aut {initial, transition, accepting} uuid =
         Map.empty
         transition
 
--- | Union two transitions
-unionTransitions :: NFATransition -> NFATransition -> NFATransition
-unionTransitions t1 t2 =
-  foldrWithKey
-    ( \(state, char) dest acc ->
-        Map.insert
-          (state, char)
-          (Set.union dest (
-            Map.findWithDefault Set.empty (state,char) acc
-          ))
-          acc
-    )
-    t2
-    t1
+instance MutableTrans NFATransition where
+  unionTransitions :: NFATransition -> NFATransition -> NFATransition
+  unionTransitions=
+    foldrWithKey
+      ( \(state, char) dest acc ->
+          Map.insert
+            (state, char)
+            (Set.union dest (
+              Map.findWithDefault Set.empty (state,char) acc
+            ))
+            acc
+      )
 
--- | Insert new connection into NFA 
-insertConnection :: NFATransition -> (State, Char, State) -> NFATransition
-insertConnection trans (u, c, v) = 
-  case Map.lookup (u, c) trans of
-    Nothing -> Map.insert (u, c) (Set.singleton v) trans
-    Just arr -> Map.insert (u, c) 
-      (Set.union (if v `elem` arr then Set.empty else Set.singleton v) arr)
-      trans
+  countTransitions :: NFATransition -> Int
+  countTransitions =
+    Map.foldrWithKey (\_ vs acc -> acc + length vs) 0 
+
+  insertTransition :: NFATransition -> (State, Char, State) -> NFATransition
+  insertTransition trans (u, c, v) = 
+    case Map.lookup (u, c) trans of
+      Nothing -> Map.insert (u, c) (Set.singleton v) trans
+      Just arr -> Map.insert (u, c) 
+        (Set.union arr (if v `elem` arr then Set.empty else Set.singleton v) )
+        trans
 
 -- | Create fully bipartite graph from two lists of vertices
 --   We need original transitions because accepting states may already have
@@ -173,17 +137,12 @@ bipartiteTransitions transOrig s1 s2 =
   foldl ( \acc uS -> 
       Map.insert (uS, epsilon) 
       (Set.union s2
-        (makeTransition acc Set.empty epsilon uS )
+        (makeTransition acc Set.empty epsilon uS)
       )
       acc
     )
     Map.empty
     s1
-
--- | Count number of transitions from an NFATransition
-countTransitions :: NFATransition -> Int
-countTransitions =
-  Map.foldrWithKey (\(k, c) vs acc -> acc + length vs) 0 
 
 -- { CORE NFA Operations }
 
@@ -249,8 +208,8 @@ kleene (nfa, uuid) =
    in Aut newInitSt (unionTransitions newTransitions trans) newAccSt
 
 -- TESTING -- 
--- | Helper for find accpting string given nfa, starting state, and visited 
--- states
+-- | Helper to find accepting string given nfa, starting state, and visited 
+-- states. Uses DFS
 findAcceptingStringAux :: NFA -> State -> Set State -> Maybe String
 findAcceptingStringAux nfa@Aut{initial, transition, accepting} start 
   visited 

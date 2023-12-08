@@ -45,6 +45,7 @@ library
   import:
       common-stanza
   exposed-modules:
+      Automaton,
       NFA,
       DFA,
       RandomString,

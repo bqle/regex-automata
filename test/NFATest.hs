@@ -95,7 +95,7 @@ instance Arbitrary NFA where
       let 
         newEdges = Prelude.map (init, c,) fromI ++ Prelude.map (,c , end) toE
           ++ edges
-        newTrans = Prelude.foldl insertConnection Data.Map.empty newEdges in
+        newTrans = Prelude.foldl insertTransition Data.Map.empty newEdges in
         return $ Aut init newTrans end
       where 
         init = "i"
