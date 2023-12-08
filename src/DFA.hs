@@ -27,7 +27,7 @@ rejectingSt = "r"
 
 -- | Run a DFA & get the final state
 run :: DFA -> [Char] -> State
-run Aut {uuid, initial, transition, accepting} = 
+run Aut {initial, transition} = 
   Prelude.foldl (flip (makeTransition transition rejectingSt)) initial
 
 accept :: DFA -> [Char] -> Bool
@@ -35,8 +35,8 @@ accept dfa@Aut {accepting} s = DFA.run dfa s `elem` accepting
 
 -- | Convert NFA to DFA
 convert :: NFA -> DFA
-convert nfa@Aut{uuid, initial, transition, accepting} = 
-  Aut 0 initialDfa newTransition acceptedSt
+convert nfa@Aut{initial, transition, accepting} = 
+  Aut initialDfa newTransition acceptedSt
   where 
     alphabet = getAlphabet nfa
     flatten :: Set State -> State
@@ -70,7 +70,6 @@ convert nfa@Aut{uuid, initial, transition, accepting} =
       if accepting `elem` initialStates then singleton initialDfa else 
         Set.empty
         )
-    --    [initialDfa | accepting `elem` initialStates]) 
        initialStates
 
 -- | Get set of all reachable states
@@ -79,7 +78,7 @@ getReachableStates dfa@Aut {initial} =
   Set.insert rejectingSt (aux dfa initial Set.empty)
   where 
     alphabet = getAlphabet dfa
-    aux dfa@Aut{initial, transition, accepting} start visited 
+    aux dfa@Aut{initial, transition} start visited 
       | start `elem` visited = visited
       | otherwise = 
         foldr (\char acc -> 
@@ -88,30 +87,16 @@ getReachableStates dfa@Aut {initial} =
 
 -- | Create the complement of a DFA ie flipping all states accept/reject
 complement :: DFA -> DFA
-complement dfa@Aut{uuid, initial, transition, accepting} = 
-  Aut uuid initial transition (Set.difference allStates accepting)
+complement dfa@Aut{initial, transition, accepting} = 
+  Aut initial transition (Set.difference allStates accepting)
   where 
     alphabet = getAlphabet dfa
     allStates = getReachableStates dfa 
-    -- | Incrementally build the new transition. Necessary because full graph
-    -- is possible theoretically
-    -- insert rejecting state first
-    transWithR = foldr (\st acc ->  -- Insert the "rejecting state" to ensure complete
-        foldr (\char acc -> 
-          case Map.lookup (st, char) transition of
-            Nothing -> Map.insert (st, char) rejectingSt acc
-            Just _ -> acc
-          ) acc alphabet
-      ) transition allStates -- | r all go to itself
-    -- from R, return R
-    rLoopTrans = 
-      foldr (\a acc -> Map.insert (rejectingSt, a) rejectingSt acc) 
-        transWithR alphabet
 
 -- | Intersect two DFAs
 intersect :: DFA -> DFA -> DFA
 intersect dfa1 dfa2 = 
-    Aut 0 (combineSt (initial dfa1) (initial dfa2)) combinedTrans
+    Aut (combineSt (initial dfa1) (initial dfa2)) combinedTrans
     combinedAcceptStates
   where 
     alphabet = Set.union (getAlphabet dfa1) (getAlphabet dfa2)
