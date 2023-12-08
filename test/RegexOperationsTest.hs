@@ -6,17 +6,15 @@ import RegexOperations
     findFirst,
     findFirstIndex,
     replace,
+    replaceAll,
     splitBy,
     subset,
   )
 import RegexParser (injectConcatSymbol, popStackUntil, regexToNFA, regexToRPN)
 import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 
--- TODO
--- popStackUntil "abcdef" (== 'c') True ~?= ("ab", "def"),
-
 tFindFirst =
-  "match" ~:
+  "findFirst" ~:
     TestList
       [ findFirst "ab" "cccccabccccc" False ~?= Just "ab",
         findFirst "(ab)*" "cccccabccccc" False ~?= Just "ab",
@@ -33,21 +31,6 @@ tFindFirst =
         findFirst "b*" "aabbbb" True ~?= Just "bbbb"
       ]
 
--- >>> runTestTT tFindFirst
--- Counts {cases = 13, tried = 13, errors = 0, failures = 0}
-
-tSplitBy =
-  "splitBy" ~:
-    TestList
-      [ splitBy "," "a,b,c,d" ~?= Just ["a", "b", "c", "d"],
-        splitBy "a" "aaba" ~?= Just ["", "", "b", ""],
-        splitBy "a*" "aaba" ~?= Just ["", "b", ""],
-        splitBy ",|;| " "a,b,c;d;f g h" ~?= Just ["a", "b", "c", "d", "f", "g", "h"],
-        splitBy "a" "" ~?= Just [],
-        splitBy "|" "asd" ~?= Nothing,
-        splitBy ",," "a,,b,,c,,d,," ~?= Just ["a", "b", "c", "d", ""]
-      ]
-
 tFindFirstIndex =
   "findFirstIndex" ~:
     TestList
@@ -59,9 +42,21 @@ tFindFirstIndex =
         findFirstIndex "brandon|benjamin" "benja brandon min" ~?= Just 6,
         findFirstIndex "(a|b|c)(d|e|f)d" "lkjwoimabcfdasdkj" ~?= Just 9,
         findFirstIndex "(a|b|c)(d|e|f)d*" "lkjwoimabcfdasdkj" ~?= Just 9,
-        findFirstIndex "b*" "aaaaaaaaabbbbbbbbccccccccc" ~?= Just 10,
+        findFirstIndex "b*" "aaaaaaaaabbbbbbbbccccccccc" ~?= Just 9,
         findFirstIndex "a" "abc" ~?= Just 0,
         findFirstIndex "c" "abc" ~?= Just 2
+      ]
+
+tSplitBy =
+  "splitBy" ~:
+    TestList
+      [ splitBy "," "a,b,c,d" ~?= Just ["a", "b", "c", "d"],
+        splitBy "a" "aaba" ~?= Just ["", "", "b", ""],
+        splitBy "a*" "aaba" ~?= Just ["", "b", ""],
+        splitBy ",|;| " "a,b,c;d;f g h" ~?= Just ["a", "b", "c", "d", "f", "g", "h"],
+        splitBy "a" "" ~?= Just [""],
+        splitBy "|" "asd" ~?= Nothing,
+        splitBy ",," "a,,b,,c,,d,," ~?= Just ["a", "b", "c", "d", ""]
       ]
 
 tFindAll =
@@ -74,10 +69,11 @@ tFindAll =
           "alice|bob"
           "alice charlie bob bob charlie alice alice bob"
           ~?= Just ["alice", "bob", "bob", "alice", "alice", "bob"],
-        findAll "a*" "aaaabcdaaddd" ~?= Just ["aaaa", "aa"],
+        findAll "a*" "aaaabcdaaddd" ~?= Just ["aaaa", "aaa", "aa", "a", "aa", "a"],
         findAll "a" "bbbbbbbb" ~?= Just [],
         findAll "|" "asdad" ~?= Nothing,
-        findAll "abc|bcd|def" "abcdef" ~?= Just ["abc", "bcd", "def"]
+        findAll "abc|bcd|def" "abcdef" ~?= Just ["abc", "bcd", "def"],
+        findAll "" "abc" ~?= Just []
       ]
 
 tReplace =
@@ -87,8 +83,19 @@ tReplace =
         replace "a" "bbb" "xyz" ~?= Just "bbb",
         replace "a*" "bbbaaaaccc" "d" ~?= Just "bbbdccc",
         replace "alice|bob" "charlie alice bob charlie alice alice bob" "daniel"
-          ~?= Just "charlie daniel daniel charlie daniel daniel daniel",
+          ~?= Just "charlie daniel bob charlie alice alice bob",
         replace "|" "asdasd" "asd" ~?= Nothing
+      ]
+
+tReplaceAll =
+  "replaceAll" ~:
+    TestList
+      [ replaceAll "abc" "abcdef" "def" ~?= Just "defdef",
+        replaceAll "a" "bbb" "xyz" ~?= Just "bbb",
+        replaceAll "a*" "bbbaaaaccc" "d" ~?= Just "bbbdccc",
+        replaceAll "alice|bob" "charlie alice bob charlie alice alice bob" "daniel"
+          ~?= Just "charlie daniel daniel charlie daniel daniel daniel",
+        replaceAll "|" "asdasd" "asd" ~?= Nothing
       ]
 
 tSubset =
@@ -108,7 +115,7 @@ tSubset =
       ]
 
 -- >>> test_all_regex_operations
--- Counts {cases = 0, tried = 0, errors = 0, failures = 0}
+-- Counts {cases = 54, tried = 54, errors = 0, failures = 0}
 test_all_regex_operations :: IO Counts
 test_all_regex_operations =
   runTestTT $

@@ -8,8 +8,8 @@ import Test.HUnit (Counts, Test (..), runTestTT, (~:), (~?=))
 import Test.QuickCheck qualified as QC
 
 tPopStackUntil =
-  "popStackUntil"
-    ~: TestList
+  "popStackUntil" ~:
+    TestList
       [ popStackUntil "abcdef" (== 'c') True ~?= ("ab", "def"),
         popStackUntil "abcdef" (== 'c') False ~?= ("ab", "cdef"),
         popStackUntil "" (== 'a') False ~?= ("", ""),
@@ -20,8 +20,8 @@ tPopStackUntil =
 
 tInjectConcatSymbol :: Test
 tInjectConcatSymbol =
-  "injectConcatSymbol"
-    ~: TestList
+  "injectConcatSymbol" ~:
+    TestList
       [ injectConcatSymbol "abcdef" ~?= "a@b@c@d@e@f",
         injectConcatSymbol "" ~?= "",
         injectConcatSymbol "a" ~?= "a",
@@ -31,8 +31,8 @@ tInjectConcatSymbol =
 
 tRegexToRPN :: Test
 tRegexToRPN =
-  "regexToRPN"
-    ~: TestList
+  "regexToRPN" ~:
+    TestList
       [ regexToRPN "ab" ~?= "ab@",
         regexToRPN "abc" ~?= "abc@@",
         regexToRPN "a*|b*" ~?= "a*b*|",
@@ -49,8 +49,8 @@ regexToNFATestHelper regex str =
         )
 
 tRegexToNFA =
-  "regexToNFA"
-    ~: TestList
+  "regexToNFA" ~:
+    TestList
       [ regexToNFATestHelper "a|b*" "" ~?= Just True,
         regexToNFATestHelper "a|b*" "a" ~?= Just True,
         regexToNFATestHelper "a|b*" "bbbbb" ~?= Just True,
@@ -107,3 +107,8 @@ prop_parseable_regex str = isJust (regexToNFA str)
 -- >>> QC.quickCheck (QC.forAll genRegExString prop_parseable_regex)
 
 -- findAcceptingString
+main :: IO ()
+main = do
+  _ <- QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
+  _ <- QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
+  putStrLn "Finished Parser QC"
