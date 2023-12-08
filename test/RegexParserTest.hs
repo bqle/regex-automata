@@ -1,9 +1,10 @@
-module RegexParserTest (
-  prop_rpn_correct_length,
-  prop_parseable_regex, 
-  test_all_regex_parser,
-  genRegExString,
-) where
+module RegexParserTest
+  ( prop_rpn_correct_length,
+    prop_parseable_regex,
+    test_all_regex_parser,
+    genRegExString,
+  )
+where
 
 import Control.Monad qualified as Monad
 import Data.Maybe
@@ -118,3 +119,5 @@ main = do
   _ <- QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
   _ <- QC.quickCheck (QC.forAll genRegExString prop_rpn_correct_length)
   putStrLn "Finished Parser QC"
+
+-- >>> main
