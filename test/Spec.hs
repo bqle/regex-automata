@@ -1,14 +1,13 @@
-import Test.HUnit
-import Test.QuickCheck
-import Test.QuickCheck qualified as QC
-
 import DFATest
 import NFATest
 import RegexOperationsTest
 import RegexParserTest
+import Test.HUnit
+import Test.QuickCheck
+import Test.QuickCheck qualified as QC
 
 main :: IO ()
-main = do 
+main = do
   putStrLn "--- NFA Tests ---"
   QC.quickCheck prop_bipartiteTrans
   QC.quickCheck prop_alternateStillAccepts
