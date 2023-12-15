@@ -19,6 +19,10 @@ import NFA
 import RandomString
 import RegexParser (regexToNFA)
 
+-- Splits a string in 2 parts, splitting
+-- at the first element where the predicate
+-- is true, with that element included in the
+-- first half
 takeWhileAcc :: ([a] -> Bool) -> [a] -> [a] -> Maybe ([a], [a])
 takeWhileAcc f acc [] =
   if f acc
@@ -29,7 +33,9 @@ takeWhileAcc f acc (x : xs) =
     then Just (acc ++ [x], xs)
     else takeWhileAcc f (acc ++ [x]) xs
 
--- Once bool is "true", continue taking until it becomes false again
+-- Similar as the previous method, but
+-- once bool is "true", continue taking
+-- until it becomes false again
 takeWhileAccMax ::
   ([a] -> Bool) ->
   [a] ->
@@ -55,12 +61,15 @@ takeWhileAccMax f acc (x : xs) endFlag
         xs
         False
 
+-- Returns the first matching string in the input
 passthroughAccept :: NFA -> Bool -> String -> Maybe (String, String)
 passthroughAccept nfa max str =
   if max
     then takeWhileAccMax (NFA.accept nfa) "" str False
     else takeWhileAcc (NFA.accept nfa) "" str
 
+-- Continously removes the first element in the
+-- array until the entire array matches a predicate
 runTailUntilJust ::
   ([a] -> Maybe ([a], [a])) ->
   ([a], [a]) ->
@@ -74,6 +83,12 @@ runTailUntilJust f ([], tl) =
     then Just ([], tl)
     else Nothing
 
+-- Finds the first substring in a string that matches
+-- the regex expression. Max determines if it is the
+-- shortest or longest possible first string.
+-- For example "ab*" on "abbb" would return either "a"
+-- or "abbb". Returns Nothing if invalid regex
+-- or if can't be found
 findFirst :: String -> String -> Bool -> Maybe String
 findFirst regex str max = do
   nfa <- regexToNFA regex
@@ -82,6 +97,10 @@ findFirst regex str max = do
     (str, [])
     >>= \x -> Just (fst x)
 
+-- Finds the index of the beginning
+-- of the first substring that matches the regex
+-- expression. Returns Nothing if invalid regex
+-- or if can't be found
 findFirstIndex :: String -> String -> Maybe Int
 findFirstIndex regex str = do
   nfa <- regexToNFA regex
@@ -103,6 +122,9 @@ findAllHelper nfa str =
     Just ([], tl) -> []
     Just (x : xs, tl) -> (x : xs) : findAllHelper nfa (xs ++ tl)
 
+-- Finds an array of all substrings in a given string
+-- matching a given RegEx expression. Includes overlapping
+-- strings. Returns Nothing if invalid regex
 findAll :: String -> String -> Maybe [String]
 findAll regex str = do
   nfa <- regexToNFA regex
@@ -121,11 +143,18 @@ splitByHelper nfa str =
         str
         : splitByHelper nfa tl
 
+-- Splits a string into an array of strings
+-- based on a specific RegEx expression. Strings
+-- matching the RegEx expression are not included in
+-- the final result. Returns Nothing if invalid regex
 splitBy :: String -> String -> Maybe [String]
 splitBy regex str = do
   nfa <- regexToNFA regex
   Just (splitByHelper nfa str)
 
+-- Replaces the first instance of a substring matching
+-- the given regex expression with a given new string.
+-- Returns Nothing if invalid RegEx.
 replace :: String -> String -> String -> Maybe String
 replace regex str newStr = do
   nfa <- regexToNFA regex
@@ -155,11 +184,16 @@ replaceAllHelper nfa str newStr = case runTailUntilJust
       ++ newStr
       ++ replaceAllHelper nfa tl newStr
 
+-- Replaces all instances of a mathing substring with a
+-- new string the array. Returns Nothing if invalid regex
 replaceAll :: String -> String -> String -> Maybe String
 replaceAll regex str newStr = do
   nfa <- regexToNFA regex
   Just (replaceAllHelper nfa str newStr)
 
+-- Given 2 RegEx expressions, return true
+-- if the first is a subset of the second.
+-- Return Nothing if either are invalid RegEx
 subset :: String -> String -> Maybe Bool
 subset str1 str2 = do
   nfa1 <- regexToNFA str1

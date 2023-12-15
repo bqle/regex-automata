@@ -26,6 +26,12 @@ peekStack :: String -> Char
 peekStack (x : xs) = x
 peekStack [] = 'ε'
 
+-- Pop a string, splitting it in 2 parts,
+-- where the string is popped until first char in
+-- the string that passes true through the predicate.
+-- The third parameter determines if or if not the
+-- element that is split on is included in the second half
+
 popStackUntil ::
   String ->
   (Char -> Bool) ->
@@ -67,10 +73,18 @@ popStackUntil stack predicate removeFlaggedElem =
           stack
    in (frst value, scnd value)
 
+-- Symbols that do not need an injected
+-- concat symbol before them
 beforeNoConcat = "*|)"
 
+-- Symbols that do not need an injected
+--  concat symbol after them
 afterNoConcat = "(|"
 
+-- Explicitly creates concat symbol from regex
+-- expressions that are implicit concats
+-- for example "abc" becomes "a@b@c".
+-- This is neccessary for the RPN conversion
 injectConcatSymbol :: String -> String
 injectConcatSymbol =
   foldr
@@ -86,6 +100,8 @@ injectConcatSymbol =
     )
     []
 
+-- Converts a RegEx string into reverse polish notation. This is important
+-- to parse the expression into an NFA.  "a|bc" becomes "abc@|"
 regexToRPN :: String -> String
 regexToRPN regex =
   let parsed =
@@ -117,11 +133,13 @@ regexToRPN regex =
       | c == '(' = (outputQueue, c : operatorStack)
       | otherwise = (outputQueue ++ [c], operatorStack)
 
+-- Gets elements needed for a binary operation
 takeForBinary :: [a] -> Maybe (a, a, [a])
 takeForBinary nfas = case nfas of
   x : y : arr -> Just (y, x, arr)
   _ -> Nothing
 
+-- Gets element needed for a unary operation
 takeForUnary :: [a] -> Maybe (a, [a])
 takeForUnary nfas = case nfas of
   x : arr -> Just (x, arr)
@@ -131,6 +149,9 @@ unwrapSingleElem :: Maybe [a] -> Maybe a
 unwrapSingleElem (Just [x]) = Just x
 unwrapSingleElem _ = Nothing
 
+-- Converts a string in RPN format into
+-- the corresponding NFA. Return Nothing,
+-- if there is a parser error
 rpnToNFA :: String -> Maybe NFA
 rpnToNFA rpn =
   if null rpn
@@ -152,16 +173,18 @@ rpnToNFA rpn =
             )
           '|' ->
             ( takeForBinary stack
-                >>= (\x -> Just (alternate (frst x, count) (scnd x, count+1) : thrd x)),
+                >>= (\x -> Just (alternate (frst x, count) (scnd x, count + 1) : thrd x)),
               count + 2
             )
           '@' ->
             ( takeForBinary stack
-                >>= (\x -> Just (append (frst x, count) (scnd x, count+1) : thrd x)),
+                >>= (\x -> Just (append (frst x, count) (scnd x, count + 1) : thrd x)),
               count + 2
             )
           _ -> (Nothing, count)
       | otherwise = (Just (alphabet [c] : stack), count + 1)
 
+-- Converts a regular expression string into a NFA
+-- Returns nothing, if a parser error
 regexToNFA :: String -> Maybe NFA
 regexToNFA regex = rpnToNFA (regexToRPN regex)
