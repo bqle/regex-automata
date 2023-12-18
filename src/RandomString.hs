@@ -1,13 +1,10 @@
 module RandomString where
-import System.Random
-import Data.Char (chr)
-import Control.Monad (replicateM)
 import Crypto.Hash
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8
 import Data.ByteArray.Encoding (convertToBase, Base(Base16))
 
--- -- Hash String
+-- Hash String
 hashString :: String -> String
 hashString input =
   let hashed :: Digest SHA256
